@@ -187,18 +187,23 @@ async function handleProxyRequest(
         proxy.paymentAddress as Address
       )
 
-      if (settlement) {
+      if (settlement.success && settlement.txHash) {
         // Mark nonce as used after successful settlement
         await paymentNonceRepository.consume(paymentResult.paymentNonce)
 
         status = 'success'
       } else {
+        const settlementError = settlement.error ?? 'Payment settlement failed'
         // Settlement failed - DO NOT return the API response (user didn't pay)
         status = 'payment_failed'
         await logRequest(proxyId, requesterWallet, status)
 
         return NextResponse.json(
-          { error: 'Payment settlement failed. Please try again.' },
+          {
+            error: settlementError.includes('Relayer wallet has insufficient native MNT')
+              ? 'Payment settlement failed because the relayer wallet has insufficient native MNT for gas.'
+              : 'Payment settlement failed. Please try again.',
+          },
           { status: 402 }
         )
       }

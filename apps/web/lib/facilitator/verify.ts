@@ -3,6 +3,7 @@ import {
   fallback,
   http,
   hashTypedData,
+  recoverTypedDataAddress,
   type Address,
   type Hex,
   type PublicClient,
@@ -22,7 +23,6 @@ import { paymentNonceRepository } from '@/lib/repositories'
 const MANTLE_SEPOLIA_RPC_URLS = [
   'https://rpc.sepolia.mantle.xyz',
   'https://mantle-sepolia.drpc.org',
-  'https://endpoints.omniatech.io/v1/mantle/sepolia/public',
 ]
 
 /**
@@ -114,6 +114,46 @@ async function verifySmartAccountSignature(
     return {
       isValid: false,
       reason: `isValidSignature call failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    }
+  }
+}
+
+/**
+ * Verify an EOA signature locally by recovering the signer address
+ */
+async function verifyEoaSignature(
+  payload: PaymentPayload,
+  chainId: number
+): Promise<{ isValid: boolean; reason?: string }> {
+  try {
+    const domain = buildMntDomain(payload.asset, chainId)
+    const recovered = await recoverTypedDataAddress({
+      domain,
+      types: EIP3009_TYPES,
+      primaryType: 'TransferWithAuthorization',
+      message: {
+        from: payload.from,
+        to: payload.to,
+        value: BigInt(payload.value),
+        validAfter: BigInt(payload.validAfter),
+        validBefore: BigInt(payload.validBefore),
+        nonce: payload.nonce,
+      },
+      signature: payload.signature as Hex,
+    })
+
+    if (recovered.toLowerCase() !== payload.from.toLowerCase()) {
+      return {
+        isValid: false,
+        reason: `Recovered signer ${recovered} does not match payment sender ${payload.from}`,
+      }
+    }
+
+    return { isValid: true }
+  } catch (error) {
+    return {
+      isValid: false,
+      reason: `EOA signature recovery failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
     }
   }
 }
@@ -220,7 +260,7 @@ export async function verifyPayment(
     let verifyResult: VerifyResult
 
     if (signatureType === 'eoa' && chainConfig.officialFacilitatorUrl) {
-      // Forward EOA signatures to official facilitator
+      // Forward EOA signatures to official facilitator when available
       const paymentRequirements: PaymentRequirements = {
         scheme: 'exact',
         network: chainConfig.name,
@@ -237,6 +277,14 @@ export async function verifyPayment(
         paymentHeaderBase64,
         paymentRequirements
       )
+    } else if (signatureType === 'eoa') {
+      // Mantle Sepolia and any other facilitator-less chains verify EOA signatures locally
+      const result = await verifyEoaSignature(header.payload, chainId)
+      verifyResult = {
+        isValid: result.isValid,
+        invalidReason: result.reason,
+        signatureType: 'eoa',
+      }
     } else {
       // Verify smart account signature locally via EIP-1271
       const transport =

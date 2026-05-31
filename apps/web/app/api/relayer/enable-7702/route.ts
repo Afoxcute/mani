@@ -21,7 +21,6 @@ import { paymentNonceRepository } from '@/lib/repositories'
 const MANTLE_SEPOLIA_RPC_URLS = [
   'https://rpc.sepolia.mantle.xyz',
   'https://mantle-sepolia.drpc.org',
-  'https://endpoints.omniatech.io/v1/mantle/sepolia/public',
 ]
 
 // Cost to generate a wallet: 0.5 MNT (18 decimals)
@@ -218,10 +217,22 @@ export async function POST(request: NextRequest) {
       paymentRecipient as Address
     )
 
-    if (!settlement) {
-      console.error('[Enable7702] Payment settlement failed - aborting 7702 enablement')
+    if (!settlement.success || !settlement.txHash) {
+      const settlementError = settlement.error ?? 'Payment settlement failed'
+      console.error(
+        `[Enable7702] Payment settlement failed: ${settlementError} - aborting 7702 enablement`
+      )
+
+      const isRelayerFundingIssue =
+        settlementError.includes('Relayer wallet has insufficient native MNT') ||
+        settlementError.includes('insufficient funds')
+
       return NextResponse.json(
-        { error: 'Payment failed. Please ensure you have sufficient MNT balance.' },
+        {
+          error: isRelayerFundingIssue
+            ? 'Payment failed because the relayer wallet has insufficient native MNT for gas on Mantle Sepolia. Please fund the relayer wallet and try again.'
+            : 'Payment failed because settlement could not be completed. Please try again.',
+        },
         { status: 402 }
       )
     }

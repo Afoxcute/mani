@@ -1,11 +1,10 @@
 'use client'
 
 import { createContext, useContext, useCallback, useMemo, useEffect, useState, type ReactNode } from 'react'
-import { useConnection, useBalance, useDisconnect, useReadContract } from 'wagmi'
-import { erc20Abi, type Address } from 'viem'
+import { useConnection, useBalance, useDisconnect } from 'wagmi'
+import type { Address } from 'viem'
 import type { UserContextValue } from './types'
 import type { UserBalance, UserSession } from '@/types'
-import { getMntConfigSafe } from '@/config/tokens'
 import { SESSION_CREATED_EVENT, SESSION_DESTROYED_EVENT } from '@/context'
 
 const UserContext = createContext<UserContextValue | null>(null)
@@ -68,10 +67,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [checkServerSession])
 
-  // Get MNT address for current chain (returns null for unsupported chains)
-  const mntAddress = chainId ? getMntConfigSafe(chainId)?.address : undefined
-
-  // Native balance (CRO)
+  // Native MNT balance
   const {
     data: nativeBalanceData,
     isLoading: isNativeBalanceLoading,
@@ -79,19 +75,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
   } = useBalance({
     address: address as Address | undefined,
     query: { enabled: !!address },
-  })
-
-  // MNT balance using ERC20 balanceOf
-  const {
-    data: mntBalanceData,
-    isLoading: isMntBalanceLoading,
-    refetch: refetchMntBalance,
-  } = useReadContract({
-    abi: erc20Abi,
-    address: mntAddress,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address && !!mntAddress },
   })
 
   // Build session object - only authenticated if BOTH wallet connected AND server session exists
@@ -109,9 +92,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (!nativeBalanceData) return null
     return {
       native: nativeBalanceData.value,
-      mnt: mntBalanceData ?? BigInt(0),
+      mnt: nativeBalanceData.value,
     }
-  }, [nativeBalanceData, mntBalanceData])
+  }, [nativeBalanceData])
 
   // Operations
   const signOut = useCallback(async () => {
@@ -119,15 +102,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [disconnect])
 
   const refreshBalance = useCallback(async () => {
-    await Promise.all([refetchNativeBalance(), refetchMntBalance()])
-  }, [refetchNativeBalance, refetchMntBalance])
+    await refetchNativeBalance()
+  }, [refetchNativeBalance])
 
   const value: UserContextValue = useMemo(
     () => ({
       session,
       balance,
       isLoading: isConnecting || isReconnecting || isCheckingSession,
-      isBalanceLoading: isNativeBalanceLoading || isMntBalanceLoading,
+      isBalanceLoading: isNativeBalanceLoading,
       error: null,
       signOut,
       refreshBalance,
@@ -140,7 +123,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
       isReconnecting,
       isCheckingSession,
       isNativeBalanceLoading,
-      isMntBalanceLoading,
       signOut,
       refreshBalance,
       checkServerSession,

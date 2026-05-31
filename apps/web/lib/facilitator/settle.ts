@@ -27,7 +27,6 @@ import { paymentNonceRepository } from '@/lib/repositories'
 const MANTLE_SEPOLIA_RPC_URLS = [
   'https://rpc.sepolia.mantle.xyz',
   'https://mantle-sepolia.drpc.org',
-  'https://endpoints.omniatech.io/v1/mantle/sepolia/public',
 ]
 
 /**
@@ -69,6 +68,20 @@ function calculateFloorGas(calldata: Hex): bigint {
 
   const baseTxGas = BigInt(21000)
   return baseTxGas + calldataGas
+}
+
+function formatSettlementError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+
+  if (
+    message.includes('insufficient funds') ||
+    message.includes('balance 0') ||
+    message.includes('insufficient balance')
+  ) {
+    return 'Relayer wallet has insufficient native MNT for gas on Mantle Sepolia.'
+  }
+
+  return message
 }
 
 /**
@@ -240,7 +253,7 @@ async function settleSmartAccountPayment(
     console.error('[Facilitator] Smart account settlement failed:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Settlement transaction failed',
+      error: formatSettlementError(error),
     }
   }
 }
@@ -258,13 +271,16 @@ export async function settlePayment(
   header: PaymentHeader,
   expectedAmount: bigint,
   expectedRecipient: Address
-): Promise<{ txHash: Hex } | null> {
+): Promise<SettleResult> {
   const chainId = parseChainId(header.network)
   const chainConfig = getChainConfig(chainId)
 
   if (!chainConfig) {
     console.error('[Facilitator] Unsupported chain for settlement:', chainId)
-    return null
+    return {
+      success: false,
+      error: `Unsupported chain for settlement: ${chainId}`,
+    }
   }
 
   // Detect signature type
@@ -302,10 +318,13 @@ export async function settlePayment(
     // Settle smart account payment directly
     const relayerKey = process.env.FACILITATOR_RELAYER_KEY
 
-    if (!relayerKey) {
-      console.error('[Facilitator] FACILITATOR_RELAYER_KEY not configured')
-      return null
+  if (!relayerKey) {
+    console.error('[Facilitator] FACILITATOR_RELAYER_KEY not configured')
+    return {
+      success: false,
+      error: 'FACILITATOR_RELAYER_KEY not configured',
     }
+  }
 
     const chain = getViemChain(chainId)
     const account = privateKeyToAccount(relayerKey as Hex)
@@ -340,10 +359,10 @@ export async function settlePayment(
 
   if (!result.success || !result.txHash) {
     console.error('[Facilitator] Settlement failed:', result.error)
-    return null
+    return result
   }
 
   console.log('[Facilitator] Payment settled! TxHash:', result.txHash)
 
-  return { txHash: result.txHash }
+  return result
 }

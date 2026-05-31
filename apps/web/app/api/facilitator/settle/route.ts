@@ -102,9 +102,9 @@ export async function POST(request: NextRequest) {
       expectedRecipient
     )
 
-    if (!settleResult) {
+    if (!settleResult.success || !settleResult.txHash) {
       return NextResponse.json(
-        { error: 'Payment settlement failed' },
+        { error: settleResult.error || 'Payment settlement failed' },
         { status: 500 }
       )
     }

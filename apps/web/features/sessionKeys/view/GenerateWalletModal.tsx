@@ -22,11 +22,10 @@ import {
   Wallet,
   ShieldAlert,
 } from 'lucide-react'
-import { useChainId, useSignTypedData, useAccount, useReadContract } from 'wagmi'
+import { useChainId, useSignTypedData, useAccount, useBalance } from 'wagmi'
 import { generateAndEnableWallet } from '@/lib/smartAccount'
 import { getAgentDelegatorAddress, isAgentDelegatorDeployed } from '@x402/contracts'
-import { getMntConfigSafe } from '@/config/tokens'
-import { erc20Abi, type Address, type Hex, type Hash } from 'viem'
+import { formatUnits, type Address, type Hex, type Hash } from 'viem'
 
 // Cost in MNT (18 decimals) - 0.5 MNT
 const WALLET_GENERATION_COST = BigInt('500000000000000000')
@@ -78,33 +77,25 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
   const { address } = useAccount()
   const { signTypedDataAsync } = useSignTypedData()
   const isSupported = isAgentDelegatorDeployed(chainId)
-
-  // Get MNT token address for current chain
-  const mntConfig = getMntConfigSafe(chainId)
-  const mntAddress = mntConfig?.address
-
-  // Check MNT balance using ERC20 balanceOf
-  const { data: mntBalance, isLoading: isBalanceLoading } = useReadContract({
-    abi: erc20Abi,
-    address: mntAddress,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && !!mntAddress,
-    },
+  const { data: nativeBalance, isLoading: isBalanceLoading } = useBalance({
+    address: address as Address | undefined,
+    query: { enabled: !!address },
   })
 
-  const hasInsufficientBalance = mntBalance !== undefined
-    ? mntBalance < WALLET_GENERATION_COST
+  const hasInsufficientBalance = nativeBalance?.value !== undefined
+    ? nativeBalance.value < WALLET_GENERATION_COST
     : true
 
   // Format balance for display (18 decimals for MNT)
-  const formattedBalance = mntBalance !== undefined
-    ? (Number(mntBalance) / 1_000_000_000_000_000_000).toFixed(4)
+  const formattedBalance = nativeBalance?.value !== undefined
+    ? formatUnits(nativeBalance.value, nativeBalance.decimals)
     : '0.00'
 
   const handleGenerate = useCallback(async () => {
     if (!isSupported || !address) return
+    if (chainId === undefined) {
+      throw new Error('Chain ID is not available')
+    }
 
     setState('enabling')
     setEnablingStep('payment')
@@ -112,6 +103,9 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
 
     try {
       const contractAddress = getAgentDelegatorAddress(chainId)
+      if (!contractAddress) {
+        throw new Error('AgentDelegator contract address is not available for this network')
+      }
 
       // Step 1: Get payment requirements from the API
       console.log('[GenerateWallet] Getting payment requirements...')
@@ -216,6 +210,10 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
     setTimeout(() => setCopiedKey(false), 2000)
   }, [generatedWallet])
 
+  const handleMintMnt = useCallback(() => {
+    window.open('https://faucet.sepolia.mantle.xyz/', '_blank', 'noopener,noreferrer')
+  }, [])
+
   const handleClose = useCallback(() => {
     if (state === 'enabling') return // Prevent closing during generation
     onOpenChange(false)
@@ -271,21 +269,12 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
                   <strong>Cost:</strong> 0.5 MNT (covers blockchain gas fees)
                 </p>
                 <p className="text-sm text-blue-600 dark:text-blue-400">
-                  Need MNT?{' '}
-                  <a
-                    href="https://faucet.sepolia.mantle.xyz/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:text-blue-800 dark:hover:text-blue-200 font-medium"
-                  >
-                    Get it here
-                  </a>{' '}
-                  from the Mantle Sepolia faucet.
+                  Need MNT? Use the mint button below to open the Mantle Sepolia faucet.
                 </p>
               </div>
 
               {/* Balance Status */}
-              {!isBalanceLoading && mntBalance !== undefined && (
+              {!isBalanceLoading && nativeBalance?.value !== undefined && (
                 <div
                   className={`rounded-lg border p-3 ${
                     hasInsufficientBalance
@@ -327,7 +316,12 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-                <Button
+              {hasInsufficientBalance && (
+                <Button variant="secondary" onClick={handleMintMnt}>
+                  Mint MNT
+                </Button>
+              )}
+              <Button
                 onClick={handleGenerate}
                 disabled={!isSupported || !address || hasInsufficientBalance || isBalanceLoading}
               >

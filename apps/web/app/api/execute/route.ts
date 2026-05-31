@@ -15,7 +15,6 @@ import { agentDelegatorAbi } from '@x402/contracts'
 const MANTLE_SEPOLIA_RPC_URLS = [
   'https://rpc.sepolia.mantle.xyz',
   'https://mantle-sepolia.drpc.org',
-  'https://endpoints.omniatech.io/v1/mantle/sepolia/public',
 ]
 
 /**

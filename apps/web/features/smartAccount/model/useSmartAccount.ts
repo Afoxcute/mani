@@ -67,6 +67,9 @@ export function useSmartAccount(): UseSmartAccountReturn {
 
     try {
       const contractAddress = getAgentDelegatorAddress(chainId)
+      if (!contractAddress) {
+        throw new Error('AgentDelegator contract address is not available for this network')
+      }
       const isDelegated = await checkDelegation(publicClient, address, contractAddress)
 
       if (isDelegated) {
@@ -109,6 +112,9 @@ export function useSmartAccount(): UseSmartAccountReturn {
 
     try {
       const contractAddress = getAgentDelegatorAddress(chainId)
+      if (!contractAddress) {
+        throw new Error('AgentDelegator contract address is not available for this network')
+      }
 
       const result = await enableSmartAccount({
         walletClient,
