@@ -1,5 +1,5 @@
 import type { Address } from 'viem'
-import { USDC_E_CONFIG } from '../constants'
+import { MNT_CONFIG } from '../constants'
 import type { SupportedChainId } from '../types'
 
 /**
@@ -16,10 +16,10 @@ export function buildAgentDelegatorDomain(walletAddress: Address, chainId: numbe
 }
 
 /**
- * Build EIP-712 domain for USDC.E token contract
+ * Build EIP-712 domain for MNT token contract
  */
-export function buildUsdceDomain(chainId: SupportedChainId) {
-  const config = USDC_E_CONFIG[chainId]
+export function buildMntDomain(chainId: SupportedChainId) {
+  const config = MNT_CONFIG[chainId]
   return {
     name: config.domainName,
     version: config.domainVersion,
@@ -27,6 +27,8 @@ export function buildUsdceDomain(chainId: SupportedChainId) {
     verifyingContract: config.address,
   } as const
 }
+
+export const buildUsdceDomain = buildMntDomain
 
 /**
  * Build EIP-712 domain for a custom token with known domain parameters

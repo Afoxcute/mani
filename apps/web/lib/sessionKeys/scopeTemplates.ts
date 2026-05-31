@@ -1,6 +1,6 @@
 import type { Address, Hex } from 'viem'
 import { cronos } from '@reown/appkit/networks'
-import { getUsdceConfig } from '@/config/tokens'
+import { getMntConfig } from '@/config/tokens'
 import { getKnownContract } from '@/lib/contracts'
 import type { EIP712Scope, ExecuteScope, SessionScope } from './types'
 
@@ -12,7 +12,7 @@ export const SELECTORS = {
   transfer: '0xa9059cbb' as Hex,
   transferFrom: '0x23b872dd' as Hex,
   approve: '0x095ea7b3' as Hex,
-  // EIP-3009 (USDC)
+  // EIP-3009 (MNT)
   transferWithAuthorization: '0xe3ee160e' as Hex,
   receiveWithAuthorization: '0xef55bec6' as Hex,
   // EIP-2612 (Permit)
@@ -33,21 +33,21 @@ export const SCOPE_TEMPLATES = {
    * This is an EIP-712 scope - budgets CANNOT be enforced on-chain
    */
   'x402:payments': (chainId: number): EIP712Scope => {
-    const usdce = getUsdceConfig(chainId)
+    const mnt = getMntConfig(chainId)
     // Get known contract metadata (includes domain info)
-    const knownContract = getKnownContract(usdce.address, chainId)
+    const knownContract = getKnownContract(mnt.address, chainId)
 
     return {
       id: 'x402:payments',
       type: 'eip712',
       name: 'x402 Payments',
-      description: 'Sign USDC transfer authorizations for x402 API payments. Enables automated payments to API providers.',
+      description: 'Sign MNT transfer authorizations for x402 API payments. Enables automated payments to API providers.',
       budgetEnforceable: false,
       approvedContracts: [{
-        address: usdce.address,
-        name: knownContract?.name ?? usdce.symbol,
+        address: mnt.address,
+        name: knownContract?.name ?? mnt.symbol,
         // Domain comes from the known contract registry
-        domain: knownContract?.eip712Domain ?? { name: 'Bridged USDC (Stargate)', version: '1' },
+        domain: knownContract?.eip712Domain ?? { name: 'Mantle Token', version: '1' },
         supportedTypes: knownContract?.supportedTypes ?? ['TransferWithAuthorization'],
       }],
     }
@@ -178,13 +178,13 @@ export interface ScopeTemplateInfo {
  * Get all available scope templates for UI display
  */
 export function getAvailableScopeTemplates(chainId: number): ScopeTemplateInfo[] {
-  const usdce = getUsdceConfig(chainId)
+  const mnt = getMntConfig(chainId)
 
   return [
     {
       id: 'x402:payments',
       name: 'x402 Payments',
-      description: 'Sign USDC transfer authorizations for x402 API payments',
+      description: 'Sign MNT transfer authorizations for x402 API payments',
       type: 'eip712',
       budgetEnforceable: false,
       requiresParams: false,
@@ -192,14 +192,14 @@ export function getAvailableScopeTemplates(chainId: number): ScopeTemplateInfo[]
     },
     {
       id: 'execute:token-transfers',
-      name: 'USDC Transfers',
-      description: 'Execute direct USDC transfers with on-chain target enforcement',
+      name: 'MNT Transfers',
+      description: 'Execute direct MNT transfers with on-chain target enforcement',
       type: 'execute',
       budgetEnforceable: true,
       requiresParams: false,
       factory: () => SCOPE_TEMPLATES['execute:token-transfers'](chainId, [{
-        token: usdce.address,
-        symbol: usdce.symbol,
+        token: mnt.address,
+        symbol: mnt.symbol,
       }]),
     },
     {
@@ -246,7 +246,7 @@ export function getScopeTemplateById(scopeId: string, chainId: number = DEFAULT_
     return {
       id: scopeId,
       name: 'x402 Payments',
-      description: 'Sign USDC transfer authorizations for x402 API payments',
+      description: 'Sign MNT transfer authorizations for x402 API payments',
       type: 'eip712',
       budgetEnforceable: false,
       requiresParams: false,

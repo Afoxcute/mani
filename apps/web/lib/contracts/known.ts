@@ -1,5 +1,4 @@
 import type { Address } from 'viem'
-import { cronos } from '@reown/appkit/networks'
 import { mantleSepoliaTestnet } from 'viem/chains'
 
 /**
@@ -22,19 +21,10 @@ export interface KnownContract {
 export const KNOWN_CONTRACTS: Record<number, Record<string, KnownContract>> = {
   // Mantle Sepolia Testnet
   [mantleSepoliaTestnet.id]: {
-    'usdc.e': {
-      address: '0xAcab8129E2cE587fD203FD770ec9ECAFA2C88080',
-      name: 'USDC.e',
-      description: 'Bridged USDC for x402 payments',
-      category: 'payment',
-    },
-  },
-  // Cronos Mainnet
-  [cronos.id]: {
-    'usdc.e': {
-      address: '0xf951eC28187D9E5Ca673Da8FE6757E6f0Be5F77C',
-      name: 'USDC.e',
-      description: 'Bridged USDC for x402 payments',
+    'mnt': {
+      address: '0x19f5557E23e9914A18239990f6C70D68FDF0deD5',
+      name: 'MNT',
+      description: 'Mantle token for x402 payments',
       category: 'payment',
     },
   },
@@ -66,11 +56,11 @@ export function getKnownContractsByCategory(
 
 /**
  * Get the default approved contracts for x402 payments
- * Returns USDC.e for the given chain
+ * Returns MNT for the given chain
  */
 export function getDefaultApprovedContracts(chainId: number): KnownContract[] {
-  const usdce = getKnownContract(chainId, 'usdc.e')
-  return usdce ? [usdce] : []
+  const mnt = getKnownContract(chainId, 'mnt')
+  return mnt ? [mnt] : []
 }
 
 /**

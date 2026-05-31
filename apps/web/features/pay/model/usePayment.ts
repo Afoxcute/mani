@@ -3,11 +3,12 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useSignTypedData, useConnection } from 'wagmi'
 import type { Address } from 'viem'
+import { parseUnits } from 'viem'
 import { useUser } from '@/context/user'
-import { getUsdceConfig, defaultChainId } from '@/config/tokens'
+import { getMntConfig, defaultChainId } from '@/config/tokens'
 import {
   EIP3009_TYPES,
-  buildUsdceDomain,
+  buildMntDomain,
   buildEIP3009Message,
   buildPaymentHeader,
   encodePaymentHeader,
@@ -35,13 +36,13 @@ export function usePayment(params: PaymentParams): UsePaymentReturn {
 
   // Derived values
   const currentChainId = chainId || defaultChainId
-  const usdceConfig = getUsdceConfig(currentChainId)
+  const mntConfig = getMntConfig(currentChainId)
   const isAuthenticated = session?.isAuthenticated ?? false
 
   // Parse and validate amount
   const parsedAmount = parseFloat(amount)
   const isValidAmount = !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount <= 1_000_000
-  const amountSmallestUnit = isValidAmount ? Math.round(parsedAmount * 1_000_000) : 0
+  const amountSmallestUnit = isValidAmount ? parseUnits(amount, 18) : BigInt(0)
 
   /**
    * Execute the payment
@@ -57,14 +58,14 @@ export function usePayment(params: PaymentParams): UsePaymentReturn {
     setTxHash(null)
 
     try {
-      // Build EIP-712 domain for USDC.E
-      const domain = buildUsdceDomain(usdceConfig.address, currentChainId)
+      // Build EIP-712 domain for MNT
+      const domain = buildMntDomain(mntConfig.address, currentChainId)
 
       // Build EIP-3009 message
       const message = buildEIP3009Message({
         from: address,
         to: recipient,
-        value: BigInt(amountSmallestUnit),
+        value: amountSmallestUnit,
         validitySeconds: 300, // 5 minutes
       })
 
@@ -93,7 +94,7 @@ export function usePayment(params: PaymentParams): UsePaymentReturn {
       const paymentHeader = buildPaymentHeader({
         message,
         signature,
-        asset: usdceConfig.address,
+        asset: mntConfig.address,
         chainId: currentChainId,
       })
       const paymentHeaderBase64 = encodePaymentHeader(paymentHeader)
@@ -126,7 +127,7 @@ export function usePayment(params: PaymentParams): UsePaymentReturn {
     recipient,
     amountSmallestUnit,
     currentChainId,
-    usdceConfig,
+    mntConfig,
     signTypedData,
   ])
 

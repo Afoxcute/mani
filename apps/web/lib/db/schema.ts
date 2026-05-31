@@ -142,7 +142,7 @@ export const apiProxies = pgTable('api_proxies', {
 
   // Pricing
   paymentAddress: varchar('payment_address', { length: 42 }).notNull(), // Wallet to receive payments
-  pricePerRequest: bigint('price_per_request', { mode: 'number' }).notNull(), // USDC smallest unit (6 decimals)
+  pricePerRequest: bigint('price_per_request', { mode: 'number' }).notNull(), // MNT smallest unit (18 decimals)
 
   // Visibility
   isPublic: boolean('is_public').default(false).notNull(),
@@ -215,7 +215,7 @@ export const sessionKeys = pgTable('session_keys', {
   // These are the only contracts this session key can sign EIP-712 messages for
   approvedContracts: jsonb('approved_contracts').$type<{
     address: string // Contract address
-    name?: string // Optional display name (e.g., "USDC.e", "Seaport")
+    name?: string // Optional display name (e.g., "MNT", "Seaport")
   }[]>().default([]),
 
   // === OAuth binding (if created via OAuth flow) ===

@@ -1,7 +1,7 @@
 /**
  * Centralized currency and number formatting utilities
  *
- * All functions expect amounts in smallest unit (6 decimals for USDC)
+ * All functions expect amounts in smallest unit (18 decimals for MNT)
  * e.g., 1_000_000 = $1.00
  */
 

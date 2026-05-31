@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract expected values from requirements
-    const expectedAmount = parseInt(paymentRequirements.maxAmountRequired, 10)
+    const expectedAmount = BigInt(paymentRequirements.maxAmountRequired)
     const expectedRecipient = paymentRequirements.payTo as Address
 
     // Verify the payment

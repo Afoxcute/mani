@@ -49,7 +49,7 @@ export default async function PayPage({ params }: PageProps) {
   // Parse and validate amount
   const amountValidation = validateAmount(decodedAmount)
   const amountUsd = parseFloat(decodedAmount)
-  const amountSmallestUnit = amountValidation.amountInSmallestUnit ?? Math.round(amountUsd * 1_000_000)
+  const amountSmallestUnit = amountValidation.amountInSmallestUnit ?? BigInt(Math.round(amountUsd * 1_000_000_000_000_000_000))
 
   return (
     <PayPageWrapper>

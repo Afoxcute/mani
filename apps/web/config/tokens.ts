@@ -1,5 +1,4 @@
 import type { Address } from 'viem'
-import { cronos } from '@reown/appkit/networks'
 import { mantleSepoliaTestnet } from 'viem/chains'
 
 export interface TokenConfig {
@@ -9,7 +8,7 @@ export interface TokenConfig {
 }
 
 export interface ChainTokens {
-  usdce: TokenConfig
+  mnt: TokenConfig
   native: {
     symbol: string
     decimals: number
@@ -17,24 +16,12 @@ export interface ChainTokens {
 }
 
 export const tokens: Record<number, ChainTokens> = {
-  // Cronos Mainnet
-  [cronos.id]: {
-    usdce: {
-      address: '0xf951eC28187D9E5Ca673Da8FE6757E6f0Be5F77C',
-      symbol: 'USDC.E',
-      decimals: 6,
-    },
-    native: {
-      symbol: 'CRO',
-      decimals: 18,
-    },
-  },
   // Mantle Sepolia Testnet
   [mantleSepoliaTestnet.id]: {
-    usdce: {
-      address: '0xAcab8129E2cE587fD203FD770ec9ECAFA2C88080',
-      symbol: 'USDC.E',
-      decimals: 6,
+    mnt: {
+      address: '0x19f5557E23e9914A18239990f6C70D68FDF0deD5',
+      symbol: 'MNT',
+      decimals: 18,
     },
     native: {
       symbol: 'MNT',
@@ -55,12 +42,12 @@ export function getTokens(chainId: number): ChainTokens {
   return chainTokens
 }
 
-export function getUsdceConfig(chainId: number): TokenConfig {
-  return getTokens(chainId).usdce
+export function getMntConfig(chainId: number): TokenConfig {
+  return getTokens(chainId).mnt
 }
 
-export function getUsdceConfigSafe(chainId: number): TokenConfig | null {
-  return tokens[chainId]?.usdce ?? null
+export function getMntConfigSafe(chainId: number): TokenConfig | null {
+  return tokens[chainId]?.mnt ?? null
 }
 
 export function getNativeConfig(chainId: number): ChainTokens['native'] {
@@ -69,3 +56,7 @@ export function getNativeConfig(chainId: number): ChainTokens['native'] {
 
 // Default chain for the app
 export const defaultChainId = mantleSepoliaTestnet.id
+
+// Backward-compatible aliases
+export const getUsdceConfig = getMntConfig
+export const getUsdceConfigSafe = getMntConfigSafe

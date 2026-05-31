@@ -16,10 +16,10 @@ export type PaymentMethod = 'session' | 'manual'
 export interface UsePaymentOrchestrationParams {
   /** Resolved recipient address */
   recipient: Address
-  /** Initial amount in USD */
+  /** Initial amount in MNT */
   initialAmountUsd: number
   /** Initial amount in smallest unit */
-  initialAmountSmallestUnit: number
+  initialAmountSmallestUnit: bigint
 }
 
 export interface UsePaymentOrchestrationReturn {

@@ -16,7 +16,7 @@ import type {
 import { detectSignatureType } from './detect'
 import { unwrapEIP6492 } from './unwrap'
 import { getChainConfig, parseChainId } from './chains'
-import { EIP3009_TYPES, buildUsdceDomain } from '@/lib/x402/client'
+import { EIP3009_TYPES, buildMntDomain } from '@/lib/x402/client'
 import { paymentNonceRepository } from '@/lib/repositories'
 
 const MANTLE_SEPOLIA_RPC_URLS = [
@@ -63,7 +63,7 @@ export function parsePaymentHeader(headerValue: string): PaymentHeader {
  * Build EIP-712 typed data hash for EIP-3009 TransferWithAuthorization
  */
 function buildEIP3009Hash(payload: PaymentPayload, chainId: number): Hex {
-  const domain = buildUsdceDomain(payload.asset, chainId)
+  const domain = buildMntDomain(payload.asset, chainId)
 
   return hashTypedData({
     domain,
@@ -165,7 +165,7 @@ async function verifyWithOfficialFacilitator(
  */
 export async function verifyPayment(
   paymentHeaderBase64: string,
-  expectedAmount: number,
+  expectedAmount: bigint,
   expectedRecipient: Address
 ): Promise<{
   address: Address
@@ -188,7 +188,7 @@ export async function verifyPayment(
     }
 
     // Verify amount matches
-    const paymentAmount = parseInt(header.payload.value, 10)
+    const paymentAmount = BigInt(header.payload.value)
     if (paymentAmount < expectedAmount) {
       return null
     }

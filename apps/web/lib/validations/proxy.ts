@@ -136,7 +136,7 @@ export const createProxySchema = z.object({
     .number()
     .int('Price must be an integer')
     .min(0, 'Price cannot be negative')
-    .max(1_000_000_000_000, 'Price exceeds maximum'), // Max ~1M USDC
+    .max(1_000_000_000_000, 'Price exceeds maximum'), // Max ~1M MNT
   isPublic: z.boolean().default(false),
   category: z
     .string()

@@ -33,7 +33,7 @@ const MANTLE_SEPOLIA_RPC_URLS = [
 /**
  * EIP-3009 ABI for transferWithAuthorization
  */
-const USDC_EIP3009_ABI = [
+const MNT_EIP3009_ABI = [
   {
     name: 'transferWithAuthorization',
     type: 'function',
@@ -186,7 +186,7 @@ async function settleSmartAccountPayment(
 
     // Encode calldata to calculate Ethermint floor gas
     const calldata = encodeFunctionData({
-      abi: USDC_EIP3009_ABI,
+      abi: MNT_EIP3009_ABI,
       functionName: 'transferWithAuthorization',
       args,
     })
@@ -197,7 +197,7 @@ async function settleSmartAccountPayment(
     // Get EVM execution gas estimate
     const estimatedGas = await publicClient.estimateContractGas({
       address: payload.asset as Address,
-      abi: USDC_EIP3009_ABI,
+      abi: MNT_EIP3009_ABI,
       functionName: 'transferWithAuthorization',
       args,
       account: account.address,
@@ -216,7 +216,7 @@ async function settleSmartAccountPayment(
       chain,
       account,
       address: payload.asset as Address,
-      abi: USDC_EIP3009_ABI,
+      abi: MNT_EIP3009_ABI,
       functionName: 'transferWithAuthorization',
       args,
       gas: gasLimit,
@@ -256,7 +256,7 @@ async function settleSmartAccountPayment(
 export async function settlePayment(
   paymentHeaderBase64: string,
   header: PaymentHeader,
-  expectedAmount: number,
+  expectedAmount: bigint,
   expectedRecipient: Address
 ): Promise<{ txHash: Hex } | null> {
   const chainId = parseChainId(header.network)

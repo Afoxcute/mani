@@ -3,13 +3,13 @@ import type { FeeConfig } from './types'
 
 /**
  * Default fee configuration
- * For hackathon: 0.5% fee with min 100 units (0.0001 USDC) and max 10000 units (0.01 USDC)
+ * For hackathon: 0.5% fee with min 100 units (0.0001 MNT) and max 10000 units (0.01 MNT)
  */
 export function getDefaultFeeConfig(): FeeConfig {
   return {
     basisPoints: parseInt(process.env.FACILITATOR_FEE_BPS || '50', 10), // 0.5%
-    minFee: BigInt(process.env.FACILITATOR_MIN_FEE || '100'), // 0.0001 USDC
-    maxFee: BigInt(process.env.FACILITATOR_MAX_FEE || '10000'), // 0.01 USDC
+    minFee: BigInt(process.env.FACILITATOR_MIN_FEE || '100'), // 0.0001 MNT
+    maxFee: BigInt(process.env.FACILITATOR_MAX_FEE || '10000'), // 0.01 MNT
     feeRecipient: (process.env.FACILITATOR_FEE_RECIPIENT ||
       process.env.PAYMENT_RECIPIENT_ADDRESS ||
       '0x0000000000000000000000000000000000000000') as Address,
@@ -56,7 +56,7 @@ export function calculateNetAmount(
 }
 
 /**
- * Format fee for display (assumes 6 decimal places for USDC)
+ * Format fee for display (assumes 18 decimal places for MNT)
  */
 export function formatFee(fee: bigint, decimals: number = 6): string {
   const divisor = BigInt(10 ** decimals)

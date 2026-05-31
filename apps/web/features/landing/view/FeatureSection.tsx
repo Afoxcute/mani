@@ -44,8 +44,8 @@ const features = [
   },
   {
     icon: Wallet,
-    title: 'Gasless USDC Payments',
-    description: 'Pay with USDC on Mantle Sepolia. Facilitator handles gas fees using EIP-3009 transferWithAuthorization.',
+    title: 'Gasless MNT Payments',
+    description: 'Pay with MNT on Mantle Sepolia. Facilitator handles gas fees using EIP-3009 transferWithAuthorization.',
     badge: 'User Experience',
   },
 ]

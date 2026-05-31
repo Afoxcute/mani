@@ -3,8 +3,9 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useConnection } from 'wagmi'
 import type { Address } from 'viem'
+import { parseUnits } from 'viem'
 import { useUser } from '@/context/user'
-import { getUsdceConfig, defaultChainId } from '@/config/tokens'
+import { getMntConfig, defaultChainId } from '@/config/tokens'
 import {
   buildEIP3009Message,
   buildPaymentHeader,
@@ -26,7 +27,7 @@ export interface UseSessionPaymentReturn {
   error: string | null
   txHash: string | null
   amount: string
-  amountSmallestUnit: number
+  amountSmallestUnit: bigint
   isValidAmount: boolean
   setAmount: (amount: string) => void
   pay: () => Promise<void>
@@ -59,13 +60,13 @@ export function useSessionPayment(params: UseSessionPaymentParams): UseSessionPa
 
   // Derived values
   const currentChainId = chainId || defaultChainId
-  const usdceConfig = getUsdceConfig(currentChainId)
+  const mntConfig = getMntConfig(currentChainId)
   const isAuthenticated = session?.isAuthenticated ?? false
 
   // Parse and validate amount
   const parsedAmount = parseFloat(amount)
   const isValidAmount = !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount <= 1_000_000
-  const amountSmallestUnit = isValidAmount ? Math.round(parsedAmount * 1_000_000) : 0
+  const amountSmallestUnit = isValidAmount ? parseUnits(amount, 18) : BigInt(0)
 
   /**
    * Execute the payment using session key
@@ -85,7 +86,7 @@ export function useSessionPayment(params: UseSessionPaymentParams): UseSessionPa
       const message = buildEIP3009Message({
         from: address,
         to: recipient,
-        value: BigInt(amountSmallestUnit),
+        value: amountSmallestUnit,
         validitySeconds: 300, // 5 minutes
       })
 
@@ -111,7 +112,7 @@ export function useSessionPayment(params: UseSessionPaymentParams): UseSessionPa
           validBefore: Number(message.validBefore),
           nonce: message.nonce,
           chainId: currentChainId,
-          tokenAddress: usdceConfig.address,
+          tokenAddress: mntConfig.address,
         }),
       })
 
@@ -129,7 +130,7 @@ export function useSessionPayment(params: UseSessionPaymentParams): UseSessionPa
       const paymentHeader = buildPaymentHeader({
         message,
         signature,
-        asset: usdceConfig.address,
+        asset: mntConfig.address,
         chainId: currentChainId,
       })
       const paymentHeaderBase64 = encodePaymentHeader(paymentHeader)
@@ -163,7 +164,7 @@ export function useSessionPayment(params: UseSessionPaymentParams): UseSessionPa
     recipient,
     amountSmallestUnit,
     currentChainId,
-    usdceConfig,
+    mntConfig,
   ])
 
   /**

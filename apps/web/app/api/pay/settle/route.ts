@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     if (!result) {
       return NextResponse.json(
-        { error: 'Payment settlement failed. Please check your USDC.E balance and try again.' },
+        { error: 'Payment settlement failed. Please check your MNT balance and try again.' },
         { status: 500 }
       )
     }

@@ -14,7 +14,7 @@ import {
   verifyPayment,
   settlePayment,
   buildPaymentRequirements,
-  getUsdceAddress,
+  getMntAddress,
 } from '@/lib/facilitator'
 import { paymentNonceRepository } from '@/lib/repositories'
 
@@ -24,8 +24,8 @@ const MANTLE_SEPOLIA_RPC_URLS = [
   'https://endpoints.omniatech.io/v1/mantle/sepolia/public',
 ]
 
-// Cost to generate a wallet: $0.50 in USDC (6 decimals)
-const WALLET_GENERATION_COST = 500000
+// Cost to generate a wallet: 0.5 MNT (18 decimals)
+const WALLET_GENERATION_COST = BigInt('500000000000000000')
 
 /**
  * Relay an EIP-7702 enablement transaction.
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     if (!paymentHeaderValue) {
       const paymentRequirements = buildPaymentRequirements({
         amount: WALLET_GENERATION_COST,
-        asset: getUsdceAddress(paymentChainId),
+        asset: getMntAddress(paymentChainId),
         recipient: paymentRecipient as Address,
         chainId: paymentChainId,
         description: 'Smart account wallet generation fee',
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
     if (!settlement) {
       console.error('[Enable7702] Payment settlement failed - aborting 7702 enablement')
       return NextResponse.json(
-        { error: 'Payment failed. Please ensure you have sufficient USDC.e balance.' },
+        { error: 'Payment failed. Please ensure you have sufficient MNT balance.' },
         { status: 402 }
       )
     }

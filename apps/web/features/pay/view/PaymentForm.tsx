@@ -18,7 +18,7 @@ interface PaymentFormProps {
   /** Initial amount in USD */
   amountUsd: number
   /** Initial amount in smallest unit */
-  amountSmallestUnit: number
+  amountSmallestUnit: bigint
   /** Original .cro domain if recipient was resolved from one */
   originalDomain?: string
 }
@@ -124,7 +124,7 @@ export function PaymentForm({
           Send Payment
         </CardTitle>
         <CardDescription>
-          Pay {originalDomain || 'recipient'} with USDC.E on Mantle Sepolia
+          Pay {originalDomain || 'recipient'} with MNT on Mantle Sepolia
         </CardDescription>
       </CardHeader>
 
@@ -149,14 +149,14 @@ export function PaymentForm({
 
         {/* Amount Input */}
         <div className="space-y-2">
-          <Label htmlFor="amount">Amount (USD)</Label>
+          <Label htmlFor="amount">Amount (MNT)</Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">MNT</span>
             <Input
               id="amount"
               type="number"
-              step="0.01"
-              min="0.01"
+              step="0.000000000000000001"
+              min="0.000000000000000001"
               max="1000000"
               value={payment.amount}
               onChange={(e) => payment.setAmount(e.target.value)}
@@ -166,7 +166,7 @@ export function PaymentForm({
           </div>
           {!payment.isValidAmount && payment.amount && (
             <p className="text-xs text-destructive">
-              Invalid amount. Must be between $0.01 and $1,000,000.
+              Invalid amount. Must be greater than 0 MNT and within the supported limit.
             </p>
           )}
         </div>

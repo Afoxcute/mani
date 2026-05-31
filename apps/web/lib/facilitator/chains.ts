@@ -5,7 +5,7 @@ import {
   DEFAULT_CHAIN_ID,
   getNetworkFromChainId as sharedGetNetworkFromChainId,
   parseChainId as sharedParseChainId,
-  getUsdceAddress as sharedGetUsdceAddress,
+  getMntAddress as sharedGetMntAddress,
   isSupportedChain,
 } from '@x402/payment'
 
@@ -23,7 +23,7 @@ export const chainConfigs: Record<number, ChainConfig> = {
     chainId: 25,
     name: 'cronos-mainnet',
     officialFacilitatorUrl: SHARED_CHAIN_CONFIGS[25].officialFacilitatorUrl,
-    usdcAddress: SHARED_CHAIN_CONFIGS[25].usdce.address,
+    usdcAddress: SHARED_CHAIN_CONFIGS[25].mnt.address,
     rpcUrl: SHARED_CHAIN_CONFIGS[25].rpcUrl,
   },
   // Cronos Testnet
@@ -31,14 +31,14 @@ export const chainConfigs: Record<number, ChainConfig> = {
     chainId: 338,
     name: 'cronos-testnet',
     officialFacilitatorUrl: SHARED_CHAIN_CONFIGS[338].officialFacilitatorUrl,
-    usdcAddress: SHARED_CHAIN_CONFIGS[338].usdce.address,
+    usdcAddress: SHARED_CHAIN_CONFIGS[338].mnt.address,
     rpcUrl: SHARED_CHAIN_CONFIGS[338].rpcUrl,
   },
   5003: {
     chainId: 5003,
     name: 'mantle-sepolia',
     officialFacilitatorUrl: SHARED_CHAIN_CONFIGS[5003].officialFacilitatorUrl,
-    usdcAddress: SHARED_CHAIN_CONFIGS[5003].usdce.address,
+    usdcAddress: SHARED_CHAIN_CONFIGS[5003].mnt.address,
     rpcUrl: SHARED_CHAIN_CONFIGS[5003].rpcUrl,
   },
 }
@@ -69,17 +69,19 @@ export function getNetworkFromChainId(chainId: number): string {
 }
 
 /**
- * Get USDC.E token address for a chain
+ * Get MNT token address for a chain
  */
-export function getUsdceAddress(chainId: number = defaultChainId): Address {
-  return sharedGetUsdceAddress(chainId)
+export function getMntAddress(chainId: number = defaultChainId): Address {
+  return sharedGetMntAddress(chainId)
 }
+
+export const getUsdceAddress = getMntAddress
 
 /**
  * Payment details for building requirements
  */
 export interface PaymentDetails {
-  amount: number
+  amount: bigint
   asset: Address
   recipient: Address
   chainId: number

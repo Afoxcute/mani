@@ -6,7 +6,7 @@ import type { Address } from 'viem'
 import type { VariableDefinition, VariableType } from '@/features/proxy/model/variables'
 import {
   EIP3009_TYPES,
-  buildUsdceDomain,
+  buildMntDomain,
   buildEIP3009Message,
   buildPaymentHeader,
   encodePaymentHeader,
@@ -223,7 +223,7 @@ export function useApiTryIt({
     const reqChainId = parseChainId(network)
 
     // Build EIP-712 domain using shared utility
-    const domain = buildUsdceDomain(asset, reqChainId)
+    const domain = buildMntDomain(asset, reqChainId)
 
     // Build EIP-3009 message using shared utility
     const message = buildEIP3009Message({

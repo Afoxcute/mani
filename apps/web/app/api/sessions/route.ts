@@ -97,12 +97,12 @@ export const POST = withAuth(async (user, request) => {
       id: 'x402:payments',
       type: 'eip712',
       name: 'x402 Payments',
-      description: 'Sign USDC transfer authorizations for x402 API payments',
+      description: 'Sign MNT transfer authorizations for x402 API payments',
       budgetEnforceable: false,
       approvedContracts: approvedContracts.map((c: { address: string; name?: string }) => ({
         address: c.address.toLowerCase(),
         name: c.name || 'Unknown',
-        domain: { name: 'Bridged USDC (Stargate)', version: '1' },
+        domain: { name: 'Mantle Token', version: '1' },
       })),
     }]
     finalOnChainParams = {

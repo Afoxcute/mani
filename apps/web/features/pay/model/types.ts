@@ -11,10 +11,10 @@ export type PaymentStatus = 'idle' | 'signing' | 'submitting' | 'success' | 'err
 export interface PaymentParams {
   /** Recipient wallet address */
   recipient: Address
-  /** Initial amount in USD */
+  /** Initial amount in MNT */
   initialAmountUsd: number
-  /** Initial amount in smallest unit (USDC.E has 6 decimals) */
-  initialAmountSmallestUnit: number
+  /** Initial amount in smallest unit (MNT has 18 decimals) */
+  initialAmountSmallestUnit: bigint
 }
 
 /**
@@ -39,7 +39,7 @@ export interface UsePaymentReturn {
   /** Current editable amount (string for input binding) */
   amount: string
   /** Parsed amount in smallest unit */
-  amountSmallestUnit: number
+  amountSmallestUnit: bigint
   /** Whether the current amount is valid */
   isValidAmount: boolean
   /** Set the amount (string for input binding) */

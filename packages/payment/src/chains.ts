@@ -1,5 +1,5 @@
 import type { Address } from 'viem'
-import { CHAIN_CONFIGS, CHAIN_TO_NETWORK, NETWORK_TO_CHAIN, DEFAULT_CHAIN_ID, USDC_E_CONFIG } from './constants'
+import { CHAIN_CONFIGS, CHAIN_TO_NETWORK, NETWORK_TO_CHAIN, DEFAULT_CHAIN_ID, MNT_CONFIG } from './constants'
 import type { ChainConfig, SupportedChainId, NetworkId } from './types'
 
 /**
@@ -67,18 +67,22 @@ export function parseChainId(network: string): number {
 }
 
 /**
- * Get USDC.E address for a chain
+ * Get MNT address for a chain
  */
-export function getUsdceAddress(chainId: number = DEFAULT_CHAIN_ID): Address {
+export function getMntAddress(chainId: number = DEFAULT_CHAIN_ID): Address {
   if (!isSupportedChain(chainId)) {
     throw new Error(`Unsupported chain ID: ${chainId}`)
   }
-  return USDC_E_CONFIG[chainId].address
+  return MNT_CONFIG[chainId].address
 }
 
 /**
- * Get USDC.E address (returns null if chain not supported)
+ * Get MNT address (returns null if chain not supported)
  */
-export function getUsdceAddressSafe(chainId: number): Address | null {
-  return isSupportedChain(chainId) ? USDC_E_CONFIG[chainId].address : null
+export function getMntAddressSafe(chainId: number): Address | null {
+  return isSupportedChain(chainId) ? MNT_CONFIG[chainId].address : null
 }
+
+// Backward-compatible aliases
+export const getUsdceAddress = getMntAddress
+export const getUsdceAddressSafe = getMntAddressSafe

@@ -2,7 +2,7 @@ import type { Address } from 'viem'
 
 export interface UserBalance {
   native: bigint
-  usdce: bigint
+  mnt: bigint
 }
 
 export interface UserSession {

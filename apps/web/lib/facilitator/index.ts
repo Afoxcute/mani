@@ -31,7 +31,7 @@ export {
   getNetworkFromChainId,
   chainConfigs,
   defaultChainId,
-  getUsdceAddress,
+  getMntAddress,
   buildPaymentRequirements,
 } from './chains'
 export type { PaymentDetails } from './chains'

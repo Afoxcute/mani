@@ -1,5 +1,5 @@
 import { paymentNonceRepository } from '@/lib/repositories'
-import { getUsdceConfig, defaultChainId } from '@/config/tokens'
+import { getMntConfig, defaultChainId } from '@/config/tokens'
 import { type Address } from 'viem'
 
 /**
@@ -35,7 +35,7 @@ export interface PaymentHeader {
 }
 
 export interface PaymentDetails {
-  amount: number
+  amount: bigint
   asset: string
   recipient: string
   chainId: number
@@ -342,11 +342,13 @@ export function buildPaymentRequirements(details: PaymentDetails): PaymentRequir
 }
 
 /**
- * Get the USDC.E token address for the chain.
+ * Get the MNT token address for the chain.
  */
-export function getUsdceAddress(chainId: number = defaultChainId): string {
-  return getUsdceConfig(chainId).address
+export function getMntAddress(chainId: number = defaultChainId): string {
+  return getMntConfig(chainId).address
 }
+
+export const getUsdceAddress = getMntAddress
 
 /**
  * Get the platform payment recipient address.

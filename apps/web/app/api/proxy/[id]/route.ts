@@ -6,7 +6,7 @@ import {
   verifyPayment,
   settlePayment,
   buildPaymentRequirements,
-  getUsdceAddress,
+  getMntAddress,
 } from '@/lib/facilitator'
 import { paymentNonceRepository } from '@/lib/repositories'
 import type { Address } from 'viem'
@@ -107,8 +107,8 @@ async function handleProxyRequest(
       const chainId = defaultChainId
 
       const paymentRequirements = buildPaymentRequirements({
-        amount: proxy.pricePerRequest,
-        asset: getUsdceAddress(chainId),
+        amount: BigInt(proxy.pricePerRequest),
+        asset: getMntAddress(chainId),
         recipient: proxy.paymentAddress as Address,
         chainId,
         description: proxy.description ?? 'API access payment',
@@ -131,7 +131,7 @@ async function handleProxyRequest(
     // Verify payment signature (but don't settle yet)
     const paymentResult = await verifyPayment(
       paymentHeaderValue,
-      proxy.pricePerRequest,
+      BigInt(proxy.pricePerRequest),
       proxy.paymentAddress as Address
     )
 
@@ -183,7 +183,7 @@ async function handleProxyRequest(
       const settlement = await settlePayment(
         paymentHeaderValue,
         paymentResult.paymentHeader,
-        proxy.pricePerRequest,
+        BigInt(proxy.pricePerRequest),
         proxy.paymentAddress as Address
       )
 

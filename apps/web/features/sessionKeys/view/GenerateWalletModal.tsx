@@ -25,14 +25,14 @@ import {
 import { useChainId, useSignTypedData, useAccount, useReadContract } from 'wagmi'
 import { generateAndEnableWallet } from '@/lib/smartAccount'
 import { getAgentDelegatorAddress, isAgentDelegatorDeployed } from '@x402/contracts'
-import { getUsdceConfigSafe } from '@/config/tokens'
+import { getMntConfigSafe } from '@/config/tokens'
 import { erc20Abi, type Address, type Hex, type Hash } from 'viem'
 
-// Cost in USDC.e (6 decimals) - $0.50
-const WALLET_GENERATION_COST = BigInt(500000)
+// Cost in MNT (18 decimals) - 0.5 MNT
+const WALLET_GENERATION_COST = BigInt('500000000000000000')
 import {
   EIP3009_TYPES,
-  buildUsdceDomain,
+  buildMntDomain,
   buildEIP3009Message,
   buildPaymentHeader,
   encodePaymentHeader,
@@ -79,28 +79,28 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
   const { signTypedDataAsync } = useSignTypedData()
   const isSupported = isAgentDelegatorDeployed(chainId)
 
-  // Get USDC.e token address for current chain
-  const usdceConfig = getUsdceConfigSafe(chainId)
-  const usdceAddress = usdceConfig?.address
+  // Get MNT token address for current chain
+  const mntConfig = getMntConfigSafe(chainId)
+  const mntAddress = mntConfig?.address
 
-  // Check USDC.e balance using ERC20 balanceOf
-  const { data: usdceBalance, isLoading: isBalanceLoading } = useReadContract({
+  // Check MNT balance using ERC20 balanceOf
+  const { data: mntBalance, isLoading: isBalanceLoading } = useReadContract({
     abi: erc20Abi,
-    address: usdceAddress,
+    address: mntAddress,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && !!usdceAddress,
+      enabled: !!address && !!mntAddress,
     },
   })
 
-  const hasInsufficientBalance = usdceBalance !== undefined
-    ? usdceBalance < WALLET_GENERATION_COST
+  const hasInsufficientBalance = mntBalance !== undefined
+    ? mntBalance < WALLET_GENERATION_COST
     : true
 
-  // Format balance for display (6 decimals for USDC.e)
-  const formattedBalance = usdceBalance !== undefined
-    ? (Number(usdceBalance) / 1_000_000).toFixed(2)
+  // Format balance for display (18 decimals for MNT)
+  const formattedBalance = mntBalance !== undefined
+    ? (Number(mntBalance) / 1_000_000_000_000_000_000).toFixed(4)
     : '0.00'
 
   const handleGenerate = useCallback(async () => {
@@ -144,7 +144,7 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
       // Step 2: Sign the x402 payment with user's wallet
       console.log('[GenerateWallet] Signing payment...')
       const reqChainId = parseChainId(requirements.network)
-      const domain = buildUsdceDomain(requirements.asset, reqChainId)
+      const domain = buildMntDomain(requirements.asset, reqChainId)
       const message = buildEIP3009Message({
         from: address,
         to: requirements.payTo,
@@ -259,7 +259,7 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
               <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
                 <h4 className="font-medium text-sm">What happens next:</h4>
                 <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                  <li>Sign a $0.50 USDC payment to cover gas costs</li>
+                  <li>Sign a 0.5 MNT payment to cover gas costs</li>
                   <li>A new wallet will be generated locally in your browser</li>
                   <li>The smart account will be enabled automatically</li>
                   <li>You&apos;ll receive the private key to import into your wallet app</li>
@@ -268,24 +268,24 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
 
               <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900 p-3 space-y-2">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Cost:</strong> $0.50 USDC.e (covers blockchain gas fees)
+                  <strong>Cost:</strong> 0.5 MNT (covers blockchain gas fees)
                 </p>
                 <p className="text-sm text-blue-600 dark:text-blue-400">
-                  Need USDC.e?{' '}
+                  Need MNT?{' '}
                   <a
-                    href="https://vvs.finance/trade/swap?inputCurrency=cro&outputCurrency=0xf951eC28187D9E5Ca673Da8FE6757E6f0Be5F77C&exactAmount=0&exactField=input"
+                    href="https://faucet.sepolia.mantle.xyz/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline hover:text-blue-800 dark:hover:text-blue-200 font-medium"
                   >
                     Get it here
                   </a>{' '}
-                  on VVS Finance.
+                  from the Mantle Sepolia faucet.
                 </p>
               </div>
 
               {/* Balance Status */}
-              {!isBalanceLoading && usdceBalance !== undefined && (
+              {!isBalanceLoading && mntBalance !== undefined && (
                 <div
                   className={`rounded-lg border p-3 ${
                     hasInsufficientBalance
@@ -306,7 +306,7 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
                           : 'text-green-700 dark:text-green-300'
                       }`}
                     >
-                      <strong>Your Balance:</strong> {formattedBalance} USDC.e
+                      <strong>Your Balance:</strong> {formattedBalance} MNT
                       {hasInsufficientBalance && ' (insufficient)'}
                     </p>
                   </div>
@@ -327,13 +327,13 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button
+                <Button
                 onClick={handleGenerate}
                 disabled={!isSupported || !address || hasInsufficientBalance || isBalanceLoading}
               >
                 {hasInsufficientBalance && !isBalanceLoading
-                  ? 'Insufficient USDC.e'
-                  : 'Generate Wallet ($0.50)'}
+                  ? 'Insufficient MNT'
+                  : 'Generate Wallet (0.5 MNT)'}
               </Button>
             </DialogFooter>
           </>

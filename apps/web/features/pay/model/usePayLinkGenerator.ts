@@ -142,7 +142,7 @@ export function usePayLinkGenerator(): UsePayLinkGeneratorReturn {
 
   const shareOnX = useCallback(() => {
     if (!paymentUrl) return
-    const text = `Pay me $${amount} via x402 - gas-free USDC.E payment on Mantle Sepolia`
+    const text = `Pay me ${amount} MNT via x402 - gas-free payment on Mantle Sepolia`
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(paymentUrl)}`
     window.open(twitterUrl, '_blank', 'noopener,noreferrer')
   }, [amount, paymentUrl])

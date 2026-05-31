@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { formatUnits } from 'viem'
 import { useUserContext } from './context'
-import { getUsdceConfig, getNativeConfig } from '@/config/tokens'
+import { getMntConfig, getNativeConfig } from '@/config/tokens'
 
 /**
  * Hook to access user session state
@@ -22,10 +22,10 @@ export function useUserBalance() {
   const formattedBalance = useMemo(() => {
     if (!balance || !session?.chainId) return null
     const nativeConfig = getNativeConfig(session.chainId)
-    const usdceConfig = getUsdceConfig(session.chainId)
+    const mntConfig = getMntConfig(session.chainId)
     return {
       native: formatUnits(balance.native, nativeConfig.decimals),
-      usdce: formatUnits(balance.usdce, usdceConfig.decimals),
+      mnt: formatUnits(balance.mnt, mntConfig.decimals),
     }
   }, [balance, session?.chainId])
 

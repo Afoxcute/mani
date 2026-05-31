@@ -156,7 +156,7 @@ export function ApiTryIt({
           Test this API by filling in the variables and making a request.
           {useSession && activeSession
             ? ' Payment will be signed automatically with your session key.'
-            : ` You'll need to sign a payment of ${formatPrice(pricePerRequest)} USDC.E.`}
+            : ` You'll need to sign a payment of ${formatPrice(pricePerRequest)} MNT.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

@@ -1,5 +1,4 @@
 import type { Address } from 'viem'
-import { cronos } from '@reown/appkit/networks'
 import { mantleSepoliaTestnet } from 'viem/chains'
 
 /**
@@ -43,45 +42,23 @@ const knownContractsRegistry: Record<string, KnownContract> = {
   // Mantle Sepolia Testnet (5003)
   // ============================================================================
 
-  // USDC.e (Stargate bridged) - Testnet
-  [`${mantleSepoliaTestnet.id}:0xacab8129e2ce587fd203fd770ec9ecafa2c88080`]: {
-    address: '0xAcab8129E2cE587fD203FD770ec9ECAFA2C88080' as Address,
+  // MNT - Testnet
+  [`${mantleSepoliaTestnet.id}:0x19f5557e23e9914a18239990f6c70d68fdf0ded5`]: {
+    address: '0x19f5557E23e9914A18239990f6C70D68FDF0deD5' as Address,
     chainId: mantleSepoliaTestnet.id,
-    name: 'USDC.e',
-    description: 'Bridged USDC via Stargate',
-    logoUrl: '/tokens/usdc.svg',
+    name: 'MNT',
+    description: 'Mantle token',
+    logoUrl: '/tokens/mnt.svg',
     verified: true,
     protocol: 'Stargate',
     type: 'token',
     eip712Domain: {
-      name: 'Bridged USDC (Stargate)',
+      name: 'Mantle Token',
       version: '1',
     },
     supportedTypes: ['TransferWithAuthorization', 'ReceiveWithAuthorization', 'Permit'],
   },
 
-  // ============================================================================
-  // Cronos Mainnet (25)
-  // ============================================================================
-
-  // USDC.e (Stargate bridged) - Mainnet
-  [`${cronos.id}:0xf951ec28187d9e5ca673da8fe6757e6f0be5f77c`]: {
-    address: '0xf951eC28187D9E5Ca673Da8FE6757E6f0Be5F77C' as Address,
-    chainId: cronos.id,
-    name: 'USDC.e',
-    description: 'Bridged USDC via Stargate',
-    logoUrl: '/tokens/usdc.svg',
-    verified: true,
-    protocol: 'Stargate',
-    type: 'token',
-    eip712Domain: {
-      name: 'Bridged USDC (Stargate)',
-      version: '2',
-    },
-    supportedTypes: ['TransferWithAuthorization', 'ReceiveWithAuthorization', 'Permit'],
-  },
-
-  // Native CRO wrapper (WCRO) - if needed in future
   // Add more known contracts here as the platform grows
 }
 

@@ -7,7 +7,7 @@ export {
   generatePaymentNonce,
   isPaymentNonceUsed,
   buildPaymentRequirements,
-  getUsdceAddress,
+  getMntAddress,
   getPaymentRecipient,
   type PaymentPayload,
   type PaymentHeader,
@@ -19,6 +19,7 @@ export {
 export {
   EIP3009_TYPES,
   generateNonce,
+  buildMntDomain,
   buildUsdceDomain,
   parseChainId,
   getNetworkFromChainId,

@@ -1,5 +1,6 @@
 import { payParamsSchema } from '@/lib/validations/pay'
 import { isCroDomain, isValidAddress } from '@/lib/cronosid'
+import { parseUnits } from 'viem'
 
 /**
  * Payment parameters interface
@@ -22,13 +23,13 @@ export interface ValidationResult {
  * Amount validation result with parsed value
  */
 export interface AmountValidationResult extends ValidationResult {
-  amountInSmallestUnit?: number
+  amountInSmallestUnit?: bigint
 }
 
 /**
- * USDC decimals constant
+ * MNT decimals constant
  */
-const USDC_DECIMALS = 6
+const MNT_DECIMALS = 18
 
 /**
  * Validate recipient - must be a valid address or .cro domain format
@@ -62,7 +63,7 @@ export function validateRecipient(recipient: string): ValidationResult {
 }
 
 /**
- * Validate amount and convert to smallest unit (6 decimals for USDC)
+ * Validate amount and convert to smallest unit (18 decimals for MNT)
  *
  * @param amount - The amount string to validate
  * @returns Validation result with converted amount if valid
@@ -91,8 +92,8 @@ export function validateAmount(amount: string): AmountValidationResult {
     }
   }
 
-  // Convert to smallest unit (6 decimals for USDC)
-  const amountInSmallestUnit = Math.round(num * Math.pow(10, USDC_DECIMALS))
+  // Convert to smallest unit (18 decimals for MNT)
+  const amountInSmallestUnit = parseUnits(amount, MNT_DECIMALS)
 
   return {
     valid: true,
