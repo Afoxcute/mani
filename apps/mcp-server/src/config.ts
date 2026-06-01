@@ -5,7 +5,7 @@
  * - DATABASE_URL: PostgreSQL connection string
  * - REDIS_URL: Redis connection string (optional)
  * - NEXT_APP_URL: URL of the Next.js web app
- * - MCP_PUBLIC_URL: Public URL where MCP server is accessible (e.g., https://mcp.agentfabric.tools)
+ * - MCP_PUBLIC_URL: Public URL where MCP server is accessible (e.g., https://mcp.mani.example.com)
  * - PORT: Server port (default 3001)
  * - SERVER_PRIVATE_KEY: RSA private key for decrypting session keys
  * - MCP_CLIENT_SECRET: OAuth client secret for x402-mcp-platform

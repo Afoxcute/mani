@@ -27,7 +27,7 @@ import {
 import { mantleSepoliaTestnet } from "viem/chains";
 import {
   agentDelegatorAbi,
-  MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS,
+  MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS,
 } from "../../packages/contracts/dist/index.js";
 
 const MANTLE_SEPOLIA_RPC_URLS = [
@@ -64,7 +64,7 @@ async function main() {
   const contractAddress =
     (process.env.MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS ||
       process.env.NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS ||
-      MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS) as Address;
+      MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS) as Address;
   const chain = mantleSepoliaTestnet;
   const rpcTransport = fallback(MANTLE_SEPOLIA_RPC_URLS.map((url) => http(url)));
 

@@ -16,8 +16,7 @@ export function Footer() {
         <div className="flex flex-col items-center gap-6 text-center">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-1 font-semibold text-xl">
-            <span className="text-foreground">Agent</span>
-            <span className="text-primary font-bold">Fabric</span>
+            <span className="text-foreground">mani</span>
           </Link>
 
           {/* Links */}

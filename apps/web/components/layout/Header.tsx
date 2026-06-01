@@ -27,8 +27,7 @@ export function Header() {
         <div className="flex items-center gap-6">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1 font-semibold text-xl">
-            <span className="text-foreground">Agent</span>
-            <span className="text-primary font-bold">Fabric</span>
+            <span className="text-foreground">mani</span>
           </Link>
 
           {/* Navigation */}

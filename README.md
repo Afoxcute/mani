@@ -118,7 +118,7 @@ Any API can be wrapped as an x402-compatible, usage-based endpoint, allowing:
 
 ---
 
-### 4. Workflow Fabric
+### 4. Workflow Engine
 
 Multi-step workflows combine:
 
@@ -132,7 +132,7 @@ Workflows are reusable, permissionable, and agent-readable.
 flowchart LR
   API["Standard API"] --> PROXY["x402 API Proxy\nUsage-based settlement"]:::good
 
-  subgraph WF["Workflow Fabric"]
+  subgraph WF["Workflow Engine"]
     A["x402 API Call(s)"] --> W["Composable Workflow\nReusable + Permissionable\nAgent-readable"]:::good
     B["On-chain Action(s)\n(Cronos EVM)"] --> W
     C["Optional: Conditional Logic\n(routing / checks)"] --> W
@@ -171,7 +171,7 @@ Selected APIs and workflows are exposed as MCP servers, enabling:
 ```mermaid
 flowchart LR
   AG["AI Agent\n(ChatGPT / Claude / Custom Agent)"] --> MCP["MCP Server\nAgent-facing execution surface\nDiscoverable capabilities"]
-  MCP --> AF["mani\nx402 Execution Fabric\nAPI Proxies + Workflow Engine\nPermission Enforcement"]:::good
+  MCP --> AF["mani\nx402 Execution Layer\nAPI Proxies + Workflow Engine\nPermission Enforcement"]:::good
   AF --> X402["x402 APIs\nPaid, usage-based settlement"]
   AF --> CR["Cronos EVM\nSmart Account + DeFi Protocols"]:::good
 
@@ -245,7 +245,7 @@ MIT
 
 ## Links
 
-- Website: https://agentfabric.tools
+- Website: https://mani.tools
 - Demo: https://www.youtube.com/watch?v=xfvH6TqvJd8
 - Hackathon Submission: https://dorahacks.io/buidl/38376
 
