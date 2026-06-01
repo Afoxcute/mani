@@ -12,6 +12,7 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { cronos, mantleSepoliaTestnet } from 'viem/chains'
+import { actionRouterAbi } from '@x402/contracts'
 import type {
   PaymentHeader,
   PaymentRequirements,
@@ -23,32 +24,12 @@ import { unwrapEIP6492 } from './unwrap'
 import { getChainConfig, parseChainId } from './chains'
 import { getDefaultFeeConfig, calculateNetAmount } from './fee'
 import { paymentNonceRepository } from '@/lib/repositories'
+import { getMantleSepoliaActionRouterAddress } from '@/lib/contracts'
 
 const MANTLE_SEPOLIA_RPC_URLS = [
   'https://rpc.sepolia.mantle.xyz',
   'https://mantle-sepolia.drpc.org',
 ]
-
-/**
- * EIP-3009 ABI for transferWithAuthorization
- */
-const MNT_EIP3009_ABI = [
-  {
-    name: 'transferWithAuthorization',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'from', type: 'address' },
-      { name: 'to', type: 'address' },
-      { name: 'value', type: 'uint256' },
-      { name: 'validAfter', type: 'uint256' },
-      { name: 'validBefore', type: 'uint256' },
-      { name: 'nonce', type: 'bytes32' },
-      { name: 'signature', type: 'bytes' },
-    ],
-    outputs: [],
-  },
-] as const
 
 /**
  * Calculate the Ethermint/Cronos floor gas based on calldata size.
@@ -155,7 +136,10 @@ async function settleWithOfficialFacilitator(
 }
 
 /**
- * Settle a smart account payment directly on-chain
+ * Settle a smart account payment through the router contract.
+ *
+ * The router keeps the visible settlement on one contract page while
+ * forwarding the underlying EIP-3009 transfer to the token contract.
  */
 async function settleSmartAccountPayment(
   walletClient: WalletClient,
@@ -166,6 +150,7 @@ async function settleSmartAccountPayment(
   account: Account
 ): Promise<SettleResult> {
   const payload = header.payload
+  const routerAddress = getMantleSepoliaActionRouterAddress()
 
   // Unwrap EIP-6492 to get inner signature
   const innerSignature = unwrapEIP6492(payload.signature as Hex)
@@ -184,10 +169,9 @@ async function settleSmartAccountPayment(
   })
 
   try {
-    // Execute transferWithAuthorization directly
-    // Note: For hackathon, we send full amount to recipient
-    // Fee collection would be done in a separate step or via a splitter contract
+    // Execute the visible settlement through the router.
     const args = [
+      payload.asset as Address,
       payload.from as Address,
       payload.to as Address,
       amount,
@@ -199,8 +183,8 @@ async function settleSmartAccountPayment(
 
     // Encode calldata to calculate Ethermint floor gas
     const calldata = encodeFunctionData({
-      abi: MNT_EIP3009_ABI,
-      functionName: 'transferWithAuthorization',
+      abi: actionRouterAbi,
+      functionName: 'settlePayment',
       args,
     })
 
@@ -209,9 +193,9 @@ async function settleSmartAccountPayment(
 
     // Get EVM execution gas estimate
     const estimatedGas = await publicClient.estimateContractGas({
-      address: payload.asset as Address,
-      abi: MNT_EIP3009_ABI,
-      functionName: 'transferWithAuthorization',
+      address: routerAddress,
+      abi: actionRouterAbi,
+      functionName: 'settlePayment',
       args,
       account: account.address,
     })
@@ -228,9 +212,9 @@ async function settleSmartAccountPayment(
     const hash = await walletClient.writeContract({
       chain,
       account,
-      address: payload.asset as Address,
-      abi: MNT_EIP3009_ABI,
-      functionName: 'transferWithAuthorization',
+      address: routerAddress,
+      abi: actionRouterAbi,
+      functionName: 'settlePayment',
       args,
       gas: gasLimit,
     })

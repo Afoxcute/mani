@@ -18,15 +18,15 @@ import {
   createPublicClient,
   fallback,
   http,
+  type Address,
   type Hex,
 } from "viem";
 import { mantleSepoliaTestnet } from "viem/chains";
-import { getAgentDelegatorAddress } from "@x402/contracts";
+import { MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS } from "../../packages/contracts/dist/index.js";
 
 const MANTLE_SEPOLIA_RPC_URLS = [
-  // "https://rpc.sepolia.mantle.xyz",
+  "https://rpc.sepolia.mantle.xyz",
   "https://mantle-sepolia.drpc.org",
-  "https://endpoints.omniatech.io/v1/mantle/sepolia/public",
 ];
 
 async function main() {
@@ -38,8 +38,6 @@ async function main() {
     console.error("");
     console.error("Usage:");
     console.error("  PRIVATE_KEY=0x... npx hardhat run scripts/enable-smart-account.ts --network mantleSepolia");
-    console.error("");
-    console.error("Note: This must be the same key stored in your Hardhat keystore as HACKATHON_KEY");
     process.exit(1);
   }
 
@@ -60,7 +58,10 @@ async function main() {
     throw new Error(`Unsupported chain ID: ${chainId}. Use Mantle Sepolia (5003).`);
   }
 
-  const contractAddress = getAgentDelegatorAddress(chainId);
+  const contractAddress =
+    (process.env.MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS ||
+      process.env.NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS ||
+      MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS) as Address;
 
   const chain = mantleSepoliaTestnet;
   const rpcTransport = fallback(MANTLE_SEPOLIA_RPC_URLS.map((url) => http(url)));

@@ -114,6 +114,12 @@ Deploy using Hardhat Ignition:
 npx hardhat ignition deploy ignition/modules/AgentDelegator.ts --network <network>
 ```
 
+Deploy the router contract when you want all visible app actions to land on one explorer page:
+
+```shell
+npx hardhat ignition deploy ignition/modules/ActionRouter.ts --network mantleSepolia
+```
+
 Set `HACKATHON_KEY` in `hardhat/.env` or your shell before deploying.
 
 ## Contract Architecture

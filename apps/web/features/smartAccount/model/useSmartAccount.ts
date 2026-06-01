@@ -3,8 +3,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useWalletClient, usePublicClient } from 'wagmi'
 import { useConnection } from 'wagmi'
-import { isAgentDelegatorDeployed, getAgentDelegatorAddress } from '@x402/contracts'
+import { isAgentDelegatorDeployed } from '@x402/contracts'
 import { checkDelegation, getDelegationTarget, enableSmartAccount, type EnableSmartAccountError } from '@/lib/smartAccount'
+import { getMantleSepoliaActionRouterAddress } from '@/lib/contracts'
 
 export type SmartAccountStatus =
   | 'checking'
@@ -30,7 +31,7 @@ export interface UseSmartAccountReturn {
 /**
  * Hook for managing ERC-7702 smart account status
  *
- * Checks if the connected wallet is delegated to our AgentDelegator contract
+ * Checks if the connected wallet is delegated to our active router contract
  * and provides functionality to enable the smart account.
  */
 export function useSmartAccount(): UseSmartAccountReturn {
@@ -66,10 +67,7 @@ export function useSmartAccount(): UseSmartAccountReturn {
     setDelegatedTo(null)
 
     try {
-      const contractAddress = getAgentDelegatorAddress(chainId)
-      if (!contractAddress) {
-        throw new Error('AgentDelegator contract address is not available for this network')
-      }
+      const contractAddress = getMantleSepoliaActionRouterAddress()
       const isDelegated = await checkDelegation(publicClient, address, contractAddress)
 
       if (isDelegated) {
@@ -111,10 +109,7 @@ export function useSmartAccount(): UseSmartAccountReturn {
     setError(null)
 
     try {
-      const contractAddress = getAgentDelegatorAddress(chainId)
-      if (!contractAddress) {
-        throw new Error('AgentDelegator contract address is not available for this network')
-      }
+      const contractAddress = getMantleSepoliaActionRouterAddress()
 
       const result = await enableSmartAccount({
         walletClient,

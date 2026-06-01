@@ -97,7 +97,7 @@ export function parsePaymentHeader(headerValue: string): PaymentHeader {
 export async function verifyPaymentWithFacilitator(
   paymentHeaderBase64: string,
   header: PaymentHeader,
-  expectedAmount: number,
+  expectedAmount: bigint,
   expectedRecipient: string
 ): Promise<{ isValid: boolean; invalidReason?: string }> {
   const facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL
@@ -158,7 +158,7 @@ export async function verifyPaymentWithFacilitator(
 export async function settlePayment(
   paymentHeaderBase64: string,
   header: PaymentHeader,
-  expectedAmount: number,
+  expectedAmount: bigint,
   expectedRecipient: string
 ): Promise<{ txHash: string } | null> {
   const facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL
@@ -240,7 +240,7 @@ export async function settlePayment(
  */
 export async function verifyPayment(
   headerValue: string,
-  expectedAmount: number,
+  expectedAmount: bigint,
   expectedRecipient: string
 ): Promise<{ address: Address; paymentNonce: string; paymentHeader: PaymentHeader } | null> {
   try {
@@ -258,7 +258,7 @@ export async function verifyPayment(
     }
 
     // Verify amount matches
-    const paymentAmount = parseInt(header.payload.value, 10)
+    const paymentAmount = BigInt(header.payload.value)
     if (paymentAmount < expectedAmount) {
       return null
     }

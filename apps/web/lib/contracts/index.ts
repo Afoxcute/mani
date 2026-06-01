@@ -7,3 +7,4 @@ export {
   formatContractDisplay,
   registerContract,
 } from './registry'
+export { getMantleSepoliaActionRouterAddress } from './router'

@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const amount = parseInt(header.payload.value, 10)
-    if (isNaN(amount) || amount <= 0) {
+    const amount = BigInt(header.payload.value)
+    if (amount <= BigInt(0)) {
       return NextResponse.json(
         { error: 'Invalid payment amount' },
         { status: 400 }

@@ -24,8 +24,9 @@ import {
 } from 'lucide-react'
 import { useChainId, useSignTypedData, useAccount, useBalance } from 'wagmi'
 import { generateAndEnableWallet } from '@/lib/smartAccount'
-import { getAgentDelegatorAddress, isAgentDelegatorDeployed } from '@x402/contracts'
+import { isAgentDelegatorDeployed } from '@x402/contracts'
 import { formatUnits, type Address, type Hex, type Hash } from 'viem'
+import { getMantleSepoliaActionRouterAddress } from '@/lib/contracts'
 
 // Cost in MNT (18 decimals) - 0.5 MNT
 const WALLET_GENERATION_COST = BigInt('500000000000000000')
@@ -102,10 +103,7 @@ export function GenerateWalletModal({ open, onOpenChange }: GenerateWalletModalP
     setError(null)
 
     try {
-      const contractAddress = getAgentDelegatorAddress(chainId)
-      if (!contractAddress) {
-        throw new Error('AgentDelegator contract address is not available for this network')
-      }
+      const contractAddress = getMantleSepoliaActionRouterAddress()
 
       // Step 1: Get payment requirements from the API
       console.log('[GenerateWallet] Getting payment requirements...')

@@ -1,3 +1,4 @@
 {
-  "AgentDelegatorModule#AgentDelegator": "0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1"
+  "AgentDelegatorModule#AgentDelegator": "0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1",
+  "ActionRouterModule#ActionRouter": "0x288dA822f469B9e11818dB9fA6EC74e57230342a"
 }

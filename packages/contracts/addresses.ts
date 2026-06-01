@@ -7,16 +7,24 @@
 import type { Address } from 'viem'
 
 /**
- * AgentDelegator contract addresses by chain ID
+ * Deployed contracts on Mantle Sepolia.
  *
+ * This repo is wired to a single live deployment set:
+ * - AgentDelegator: account logic / session validation
+ * - ActionRouter: active contract page for app interactions
  */
+export const MANTLE_SEPOLIA_CHAIN_ID = 5003
+export const MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS =
+  '0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1' as Address
+export const MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS =
+  '0x288dA822f469B9e11818dB9fA6EC74e57230342a' as Address
+
 export const AGENT_DELEGATOR_ADDRESS: Partial<Record<number, Address>> = {
-  // Cronos Testnet (chain 338)
-  338: '0xA8734aA1db20bdc08fCf4E7C8657BF37f3c2e0b3',
-  // Cronos Mainnet (chain 25) - not yet deployed
-  25: '0x42592635fF346142c47351787134C9B1a21e71EC',
-  // Mantle Sepolia Testnet (chain 5003)
-  5003: '0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1',
+  [MANTLE_SEPOLIA_CHAIN_ID]: MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS,
+} as const
+
+export const ACTION_ROUTER_ADDRESS: Partial<Record<number, Address>> = {
+  [MANTLE_SEPOLIA_CHAIN_ID]: MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS,
 } as const
 
 /**
@@ -24,16 +32,37 @@ export const AGENT_DELEGATOR_ADDRESS: Partial<Record<number, Address>> = {
  * @throws if contract is not deployed on the chain
  */
 export function getAgentDelegatorAddress(chainId: number): Address {
-  const address = AGENT_DELEGATOR_ADDRESS[chainId]
-  if (!address) {
-    throw new Error(`AgentDelegator not deployed on chain ${chainId}`)
+  if (chainId !== MANTLE_SEPOLIA_CHAIN_ID) {
+    throw new Error(
+      `AgentDelegator is deployed only on Mantle Sepolia (${MANTLE_SEPOLIA_CHAIN_ID})`
+    )
   }
-  return address
+  return MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS
+}
+
+/**
+ * Get ActionRouter address for a specific chain
+ * @throws if contract is not deployed on the chain
+ */
+export function getActionRouterAddress(chainId: number): Address {
+  if (chainId !== MANTLE_SEPOLIA_CHAIN_ID) {
+    throw new Error(
+      `ActionRouter is deployed only on Mantle Sepolia (${MANTLE_SEPOLIA_CHAIN_ID})`
+    )
+  }
+  return MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS
 }
 
 /**
  * Check if AgentDelegator is deployed on a chain
  */
 export function isAgentDelegatorDeployed(chainId: number): boolean {
-  return Boolean(AGENT_DELEGATOR_ADDRESS[chainId])
+  return chainId === MANTLE_SEPOLIA_CHAIN_ID
+}
+
+/**
+ * Check if ActionRouter is deployed on a chain
+ */
+export function isActionRouterDeployed(chainId: number): boolean {
+  return chainId === MANTLE_SEPOLIA_CHAIN_ID
 }

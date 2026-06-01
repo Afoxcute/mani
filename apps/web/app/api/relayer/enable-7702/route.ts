@@ -9,13 +9,13 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mantleSepoliaTestnet } from 'viem/chains'
-import { getAgentDelegatorAddress } from '@x402/contracts'
 import {
   verifyPayment,
   settlePayment,
   buildPaymentRequirements,
   getMntAddress,
 } from '@/lib/facilitator'
+import { getMantleSepoliaActionRouterAddress } from '@/lib/contracts'
 import { paymentNonceRepository } from '@/lib/repositories'
 
 const MANTLE_SEPOLIA_RPC_URLS = [
@@ -40,7 +40,7 @@ const WALLET_GENERATION_COST = BigInt('500000000000000000')
  * Request body:
  * - targetAddress: The address being delegated (the new wallet)
  * - authorization: The signed EIP-7702 authorization object containing:
- *   - address: The contract address to delegate to (AgentDelegator)
+ *   - address: The contract address to delegate to (ActionRouter / AgentDelegator fallback)
  *   - chainId: The chain ID
  *   - nonce: The authorization nonce
  *   - r, s, yParity: The signature components
@@ -151,18 +151,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify the authorization is for the correct AgentDelegator contract
-    let expectedContract: Address
-    try {
-      expectedContract = getAgentDelegatorAddress(chainId)
-    } catch {
-      return NextResponse.json(
-        {
-          error: 'AgentDelegator contract address is not available for this chain.',
-        },
-        { status: 400 }
-      )
-    }
+    // Verify the authorization is for the correct router contract
+    const expectedContract = getMantleSepoliaActionRouterAddress()
     if (
       authorization.address.toLowerCase() !== expectedContract.toLowerCase()
     ) {

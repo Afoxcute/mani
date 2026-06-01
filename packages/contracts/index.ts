@@ -6,12 +6,19 @@
 
 // ABIs
 export { agentDelegatorAbi } from './abi/AgentDelegator'
+export { actionRouterAbi } from './abi/ActionRouter'
 
 // Addresses
 export {
   AGENT_DELEGATOR_ADDRESS,
+  ACTION_ROUTER_ADDRESS,
+  MANTLE_SEPOLIA_CHAIN_ID,
+  MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS,
+  MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS,
   getAgentDelegatorAddress,
+  getActionRouterAddress,
   isAgentDelegatorDeployed,
+  isActionRouterDeployed,
 } from './addresses'
 
 // Types
