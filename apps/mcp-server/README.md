@@ -65,25 +65,21 @@ Notes:
 
 ## GitHub Actions Deploy to Ubuntu
 
-The included workflow at [/.github/workflows/mcp-docker.yml](/C:/Users/XPS/mani/.github/workflows/mcp-docker.yml) SSHes into an Ubuntu server and runs the same Docker build and restart flow.
+The included workflow at [/.github/workflows/mcp-docker.yml](/C:/Users/XPS/mani/.github/workflows/mcp-docker.yml) builds the Docker image, pushes it to Docker Hub, and then SSHes into the Ubuntu server to pull and restart the container.
 
 Required GitHub secrets:
-- `MCP_SSH_HOST`
-- `MCP_SSH_USER`
-- `MCP_SSH_KEY`
-- `MCP_SSH_PORT` (optional, defaults to `22`)
-- `MCP_DEPLOY_PATH` (absolute path to the repo root on the Ubuntu server)
-- `MCP_ENV_FILE` (optional, defaults to `/opt/mani/apps/mcp-server/.env`)
-- `MCP_CONTAINER_NAME` (optional, defaults to `bottie-mcp`)
-- `MCP_IMAGE_NAME` (optional, defaults to `bottie-mcp`)
-- `MCP_HOST_PORT` (optional, defaults to `3001`)
+- `DOCKER_USERNAME_PROD`
+- `DOCKER_HUB_ACCESS_TOKEN_PROD`
+- `SSH_HOST_TEMP`
+- `SSH_USERNAME_TEMP`
+- `SSH_PRIVATE_TEMP`
 
 Ubuntu server prerequisites:
 - Docker is installed and the deploy user can run it
-- The repo is already cloned at `MCP_DEPLOY_PATH`
-- The server env file exists at `MCP_ENV_FILE`
+- The server env file exists at `/home/ubuntu/bottie/.env.mcp`
 - That env file contains `DATABASE_URL`, `SERVER_PRIVATE_KEY`, `MCP_CLIENT_SECRET`, and the other runtime variables listed above
 - The server can reach the database and Redis from its network
+- The image name pulled by the server must match `DOCKER_USERNAME_PROD/bonzo-mcp:latest`
 
 ## API Endpoints
 
