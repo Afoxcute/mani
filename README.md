@@ -132,7 +132,7 @@ HACKATHON_KEY=0x... npx hardhat ignition deploy ignition/modules/ActionRouter.ts
 
 ## Links
 
-- Source repo: this repository
-- Hackathon submission: add your DoraHacks link here
+- Source repo: https://github.com/Afoxcute/mani
+- Hackathon submission: https://dorahacks.io/buidl/44140
 - Demo video: add your video link here
 
