@@ -1,39 +1,51 @@
-# x402 MCP Server
+# mani MCP Server
 
-Express.js server implementing the Model Context Protocol (MCP) for AI agent integration. Exposes marketplace APIs and workflows as MCP tools that AI agents can discover and execute.
+Express-based MCP server for the mani platform.
 
-## Features
+It exposes marketplace APIs and workflows as MCP tools so AI agents can discover and execute them through a standard protocol.
 
-- **MCP Protocol** - Streamable HTTP transport with session management
-- **OAuth 2.0** - Protected resource with RFC 8414/9470 metadata discovery
-- **Proxy Tools** - Wrap marketplace APIs as MCP tools with x402 payment handling
-- **Workflow Tools** - Execute multi-step workflows (HTTP calls + on-chain transactions)
-- **Multi-tenant** - Slug-based routing for multiple MCP server configurations
+## What it does
 
-## Environment Setup
+- Serves MCP tools for APIs and workflows
+- Supports OAuth discovery for MCP clients
+- Uses the mani database to resolve tools and workflows
+- Works with the x402 marketplace and session key flows
 
-The MCP server shares environment variables with the web app. Required variables:
+## Environment
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string (shared with web) |
-| `REDIS_URL` | Redis connection string (optional) |
-| `NEXT_APP_URL` | URL of the web app (default: `http://localhost:3000`) |
-| `MCP_PUBLIC_URL` | Public URL where this MCP server is accessible (e.g., `https://mcp.yourdomain.com`) - used in OAuth metadata and WWW-Authenticate headers |
-| `PORT` | Server port (default: `3001`) |
-| `CHAIN_ID` | Cronos chain ID - `338` testnet, `25` mainnet |
-| `SERVER_PRIVATE_KEY` | RSA private key for decrypting session keys |
-| `MCP_CLIENT_SECRET` | OAuth client secret for the MCP platform client |
+The server loads environment variables from `apps/mcp-server/.env.local` and `apps/mcp-server/.env` when present.
 
-## Running
+Required:
+
+- `DATABASE_URL`
+- `SERVER_PRIVATE_KEY`
+- `MCP_CLIENT_SECRET`
+
+Recommended:
+
+- `NEXT_APP_URL` - public URL of the mani web app
+- `MCP_PUBLIC_URL` - public URL of the MCP server
+- `REDIS_URL` - optional shared nonce/session storage
+- `CHAIN_ID` - use `5003` for Mantle Sepolia
+- `PORT` - defaults to `3001`
+- `WORKFLOW_DEBUG` - optional debug logging
+
+## Run locally
 
 ```bash
-# Development (port 3001)
-pnpm dev
+pnpm --filter mcp-server dev
+```
 
-# Production build
-pnpm build
-pnpm start
+## Build
+
+```bash
+pnpm --filter mcp-server build
+```
+
+## Start
+
+```bash
+pnpm --filter mcp-server start
 ```
 
 ## Docker
@@ -50,70 +62,49 @@ Run the container:
 docker run --rm -p 3001:3001 \
   -e DATABASE_URL=postgres://... \
   -e REDIS_URL=redis://... \
-  -e NEXT_APP_URL=http://host.docker.internal:3000 \
-  -e MCP_PUBLIC_URL=https://your-mcp-domain.com \
+  -e NEXT_APP_URL=https://your-web-app.example.com \
+  -e MCP_PUBLIC_URL=https://your-mcp-server.example.com \
   -e SERVER_PRIVATE_KEY=... \
   -e MCP_CLIENT_SECRET=... \
   -e CHAIN_ID=5003 \
   bottie-mcp
 ```
 
-Notes:
-- The container listens on `PORT=3001`.
-- `NEXT_APP_URL` should point at the web app reachable from the container.
-- `MCP_PUBLIC_URL` should be the externally reachable URL of the MCP server when you deploy it behind a proxy.
+## GitHub Actions deployment
 
-## GitHub Actions Deploy to Ubuntu
+The workflow at [/.github/workflows/mcp-docker.yml](/C:/Users/XPS/mani/.github/workflows/mcp-docker.yml) does this:
 
-The included workflow at [/.github/workflows/mcp-docker.yml](/C:/Users/XPS/mani/.github/workflows/mcp-docker.yml) builds the Docker image, pushes it to Docker Hub, and then SSHes into the Ubuntu server to pull and restart the container.
+- builds `Dockerfile.mcp`
+- pushes the image to Docker Hub
+- SSHes into the Ubuntu server
+- pulls the latest image
+- restarts the container with Docker
 
 Required GitHub secrets:
+
 - `DOCKER_USERNAME_PROD`
 - `DOCKER_HUB_ACCESS_TOKEN_PROD`
 - `SSH_HOST_TEMP`
 - `SSH_USERNAME_TEMP`
 - `SSH_PRIVATE_TEMP`
 
-Ubuntu server prerequisites:
-- Docker is installed and the deploy user can run it
-- The server env file exists at `/home/ubuntu/bottie/.env.mcp`
-- That env file contains `DATABASE_URL`, `SERVER_PRIVATE_KEY`, `MCP_CLIENT_SECRET`, and the other runtime variables listed above
-- The server can reach the database and Redis from its network
-- The image name pulled by the server must match `DOCKER_USERNAME_PROD/bonzo-mcp:latest`
+Ubuntu server env file:
 
-## API Endpoints
+- Path: `/home/ubuntu/bottie/.env.mcp`
+- Must contain `DATABASE_URL`, `SERVER_PRIVATE_KEY`, `MCP_CLIENT_SECRET`, `NEXT_APP_URL`, `MCP_PUBLIC_URL`, and `CHAIN_ID=5003`
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Health check |
-| `POST /mcp/:slug` | MCP JSON-RPC endpoint |
-| `GET /mcp/:slug` | SSE streaming for MCP sessions |
-| `DELETE /mcp/:slug` | Terminate MCP session |
-| `GET /.well-known/oauth-authorization-server` | OAuth metadata |
-| `GET /.well-known/oauth-protected-resource` | Protected resource metadata |
-| `GET /mcp/:slug/.well-known/*` | Slug-specific OAuth discovery |
+## API endpoints
 
-## Local Testing with Tunnels
+- `GET /health`
+- `POST /mcp/:slug`
+- `GET /mcp/:slug`
+- `DELETE /mcp/:slug`
+- `GET /.well-known/oauth-authorization-server`
+- `GET /.well-known/oauth-protected-resource`
 
-For testing with external MCP clients, expose the server via cloudflared:
+## Notes for submission
 
-```bash
-cloudflared tunnel --url http://localhost:3001
-```
+- The MCP server should be deployed on a public host.
+- Set `MCP_PUBLIC_URL` to the public URL, not localhost.
+- Link the public MCP URL in your DoraHacks submission if you expose it as part of the demo.
 
-## Architecture
-
-```
-src/
-├── server.ts       # Express app setup and MCP session handling
-├── index.ts        # Server entry point
-├── auth/           # OAuth token validation
-├── tools/          # Tool registry and handlers
-│   ├── registry.ts      # Load tools from database
-│   ├── proxy-tool.ts    # API proxy tool factory
-│   └── workflow-tool.ts # Workflow tool factory
-└── workflows/      # Workflow execution engine
-    ├── engine.ts        # Core workflow executor
-    ├── resolver.ts      # JSONPath expression resolution
-    └── steps/           # Step type handlers (http, onchain)
-```

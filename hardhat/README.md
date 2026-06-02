@@ -1,131 +1,82 @@
-# AgentDelegator Contract
+# mani Contracts
 
-A smart account contract implementing ERC-7702 delegation with session key support. The AgentDelegator enables EOA wallets to delegate limited permissions to session keys (agents) for specific operations without exposing the owner's private key.
+This package contains the smart contracts, deployment modules, and verification tooling for the current Mantle Sepolia deployment.
 
-## Overview
+## Live deployments
 
-The AgentDelegator contract allows users to:
+Current live Mantle Sepolia contracts:
 
-- **Delegate authority** to session keys with scoped permissions (allowed targets, selectors, time bounds)
-- **Sign EIP-1271 signatures** on behalf of the smart account using session keys
-- **Execute transactions** via ERC-4337 UserOperations or direct `executeWithSession` calls
-- **Approve contracts** for EIP-1271 signature validation with domain-specific configuration
+- `AgentDelegator`
+  - `0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1`
+  - Sourcify: https://sourcify.dev/server/repo-ui/5003/0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1
+- `ActionRouter`
+  - `0x288dA822f469B9e11818dB9fA6EC74e57230342a`
+  - Sourcify: https://sourcify.dev/server/repo-ui/5003/0x288dA822f469B9e11818dB9fA6EC74e57230342a
 
-## Session Keys
+These are the addresses currently wired through the mani source code.
 
-Sessions are created by the account owner and define what a session key is allowed to do:
+## What each contract does
 
-```solidity
-struct Session {
-    address sessionKey;        // The delegated key address
-    address[] allowedTargets;  // Contracts the session can interact with
-    bytes4[] allowedSelectors; // Function selectors allowed (empty = all)
-    uint48 validAfter;         // Start timestamp
-    uint48 validUntil;         // Expiration timestamp
-    bool active;               // Can be revoked by owner
-}
-```
+- `AgentDelegator`
+  - ERC-7702 delegation
+  - session key management
+  - `grantSession(...)`
+  - `executeWithSession(...)`
+- `ActionRouter`
+  - extends `AgentDelegator`
+  - keeps the same smart-account logic
+  - adds a visible settlement entrypoint for app interactions
 
-Each session also has a list of **approved contracts** for EIP-1271 signatures, stored with their EIP-712 domain info (name hash, version hash).
+## Setup
 
-## EIP-712 Signature Formats
-
-The contract supports three signature formats, distinguished by length:
-
-### 65 bytes: EOA Owner Signature
-
-Standard ECDSA signature from the account owner. Grants full access to all operations.
-
-### 97 bytes: ERC-4337 Session Signature
-
-Used for UserOperation validation in the ERC-4337 flow.
-
-```
-Format: sessionId (32 bytes) + ecdsaSignature (65 bytes)
-```
-
-The session key signs an EIP-712 typed message:
-
-```solidity
-bytes32 constant ERC4337_SESSION_SIGNATURE_TYPEHASH =
-    keccak256("ERC4337SessionSignature(bytes32 sessionId,bytes32 userOpHash)");
-
-// Session key signs:
-bytes32 structHash = keccak256(abi.encode(
-    ERC4337_SESSION_SIGNATURE_TYPEHASH,
-    sessionId,
-    userOpHash
-));
-bytes32 digest = hashTypedDataV4(structHash);
-```
-
-### 149 bytes: EIP-1271 Session Signature
-
-Used for off-chain signature validation (e.g., USDC permit signatures for x402 payments).
-
-```
-Format: sessionId (32) + verifyingContract (20) + structHash (32) + ecdsaSignature (65)
-```
-
-This format prevents domain confusion attacks by requiring the session key to prove knowledge of the exact EIP-712 domain used:
-
-1. The caller provides the `verifyingContract` address and original `structHash`
-2. The contract looks up the pre-registered domain info (name, version) for that contract
-3. The contract recomputes the expected hash: `keccak256("\x19\x01" || domainSeparator || structHash)`
-4. If the recomputed hash matches the `hash` parameter, the preimage is verified
-5. The session key's signature is validated over its own typed message:
-
-```solidity
-bytes32 constant SESSION_SIGNATURE_TYPEHASH =
-    keccak256("SessionSignature(address verifyingContract,bytes32 structHash)");
-
-// Session key signs:
-bytes32 sessionStructHash = keccak256(abi.encode(
-    SESSION_SIGNATURE_TYPEHASH,
-    verifyingContract,
-    structHash
-));
-bytes32 digest = hashTypedDataV4(sessionStructHash);
-```
-
-## Security Model
-
-The EIP-1271 session signature design provides several security guarantees:
-
-1. **Domain binding**: Session keys can only sign for pre-approved contracts with known EIP-712 domains
-2. **Preimage verification**: The contract verifies the hash was actually constructed from the claimed domain and struct hash
-3. **Scope limitation**: Sessions are restricted to specific targets and function selectors
-4. **Time bounds**: Sessions have explicit validity windows enforced on-chain
-5. **Revocability**: The account owner can revoke sessions at any time
-
-## Usage
-
-### Running Tests
-
-```shell
-npx hardhat test
-```
-
-### Deployment
-
-Deploy using Hardhat Ignition:
-
-```shell
-npx hardhat ignition deploy ignition/modules/AgentDelegator.ts --network <network>
-```
-
-Deploy the router contract when you want all visible app actions to land on one explorer page:
-
-```shell
-npx hardhat ignition deploy ignition/modules/ActionRouter.ts --network mantleSepolia
+```bash
+pnpm install
 ```
 
 Set `HACKATHON_KEY` in `hardhat/.env` or your shell before deploying.
 
-## Contract Architecture
+## Deploy
 
-- **ERC-7702**: Enables EOA delegation to the smart account logic
-- **ERC-7821**: Batch execution support with ERC-7579 encoding
-- **ERC-4337**: Account abstraction compatibility via `validateUserOp`
-- **ERC-1271**: Smart contract signature validation for off-chain signing
-- **ERC-7201**: Namespaced storage to avoid collisions
+```bash
+npx hardhat ignition deploy ignition/modules/AgentDelegator.ts --network mantleSepolia
+npx hardhat ignition deploy ignition/modules/ActionRouter.ts --network mantleSepolia
+```
+
+## Verify
+
+The repo is configured to verify on Mantle Sepolia. If the Mantle Explorer API key is set, Hardhat will use it. If not, Sourcify verification still succeeds.
+
+Example:
+
+```bash
+npx hardhat verify --network mantleSepolia 0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1
+npx hardhat verify --network mantleSepolia 0x288dA822f469B9e11818dB9fA6EC74e57230342a
+```
+
+Required env for explorer verification:
+
+- `MANTLE_SEPOLIA_EXPLORER_API_KEY` - optional, used for Mantle Explorer verification
+
+## Scripts
+
+Helpful scripts in this package:
+
+- `scripts/enable-smart-account.ts`
+- `scripts/test-agent-delegator.ts`
+- `scripts/full-agent-delegator-flow.ts`
+
+Run them with:
+
+```bash
+PRIVATE_KEY=0x... npx hardhat run scripts/full-agent-delegator-flow.ts --network mantleSepolia
+```
+
+## Legacy deployments
+
+The repo still contains older deployment artifacts for reference:
+
+- Cronos mainnet
+- older test deployment entries
+
+The active production path for mani is Mantle Sepolia.
+

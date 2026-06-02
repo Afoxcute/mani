@@ -1,15 +1,21 @@
-# Facilitator Service
+# mani Facilitator Service
 
-Standalone x402 facilitator for Mantle Sepolia.
+Standalone x402 facilitator for mani on Mantle Sepolia.
 
-## What it exposes
+This service handles:
+
+- payment verification
+- payment settlement
+- nonce protection
+- relayer broadcasting for the x402 flow
+
+## Endpoints
 
 - `GET /health`
 - `POST /verify`
 - `POST /settle`
-- The same endpoints are also available at:
-  - `/api/facilitator/verify`
-  - `/api/facilitator/settle`
+- `POST /api/facilitator/verify`
+- `POST /api/facilitator/settle`
 
 ## Environment
 
@@ -17,15 +23,14 @@ Required:
 
 - `FACILITATOR_RELAYER_KEY`
 
-Optional:
+Recommended:
 
 - `PORT` - defaults to `3002`
-- `REDIS_URL` - enables shared nonce storage; falls back to memory if unset or unavailable
-- `MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS` - routes visible settlement txs through your deployed router contract
+- `REDIS_URL` - shared nonce storage, optional but recommended
+- `NEXT_PUBLIC_X402_FACILITATOR_URL` - set in the web app, not here
+- `MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS` - routes settlement through the deployed router contract
 
 ## Run locally
-
-From the repo root:
 
 ```bash
 pnpm --filter facilitator dev
@@ -43,12 +48,17 @@ pnpm --filter facilitator build
 pnpm --filter facilitator start
 ```
 
-## Use from the web app
+## Docker
 
-Point any x402 client or protected API flow at the service base URL, for example:
+If you run it in Docker, the container should be started with an env file that includes the required variables above.
 
-```bash
+## Web app integration
+
+Set the web app facilitator URL to the public base URL of this service:
+
+```env
 NEXT_PUBLIC_X402_FACILITATOR_URL=https://your-facilitator.example.com
 ```
 
-This service is configured for Mantle Sepolia and will fall back to the existing AgentDelegator address until you set the router env var above.
+Do not use `localhost` in the final demo deployment.
+

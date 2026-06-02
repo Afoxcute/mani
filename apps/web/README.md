@@ -1,82 +1,102 @@
-# x402 Marketplace Web App
+# mani Web App
 
-Next.js 16 frontend and API backend for the x402 Payment Marketplace. Enables developers to list APIs and monetize them with cryptocurrency payments on Cronos blockchain using the x402 payment protocol.
+Next.js frontend and API backend for the mani x402 marketplace on Mantle Sepolia.
+
+This app lets you:
+
+- create paid API proxies
+- view request activity and earnings
+- build reusable workflows
+- manage MCP server exposure for AI agents
+- enable ERC-7702 smart accounts and session keys
+
+## Current chain and deployment model
+
+- Chain: Mantle Sepolia
+- Chain ID: `5003`
+- Payment token: MNT
+- Smart account / delegation flow: `AgentDelegator`
+- Visible on-chain router: `ActionRouter`
+
+The deployed contracts currently wired in source are:
+
+- `AgentDelegator`
+  - `0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1`
+- `ActionRouter`
+  - `0x288dA822f469B9e11818dB9fA6EC74e57230342a`
 
 ## Features
 
-- **Wallet Authentication** - Sign-In with Ethereum (SIWE) using Reown AppKit
-- **API Marketplace** - Browse, publish, and manage pay-per-call APIs
-- **MCP Server Management** - Configure MCP servers for AI agent integration
-- **Session Keys** - ERC-7702 delegated session keys for scoped permissions
-- **Workflow Builder** - Create multi-step automation templates for AI agents
-- **OAuth Provider** - Issue tokens for MCP clients to authenticate
+- Wallet authentication with Reown AppKit
+- API marketplace with x402 payment gating
+- MCP server management
+- Workflow builder for HTTP + on-chain automation
+- Session keys for bounded AI execution
 
-## Environment Setup
+## Environment setup
 
-1. Copy the example environment file:
-   ```bash
-   cp .env.example .env.local
-   ```
-
-2. Configure the required variables:
-
-   | Variable | Description |
-   |----------|-------------|
-   | `NEXT_PUBLIC_REOWN_PROJECT_ID` | Get from [cloud.reown.com](https://cloud.reown.com/) |
-   | `DATABASE_URL` | PostgreSQL connection string |
-   | `REDIS_URL` | Redis connection string |
-   | `SESSION_SECRET` | 32+ character secret (`openssl rand -base64 32`) |
-   | `SERVER_PUBLIC_KEY` | RSA public key for header encryption |
-   | `SERVER_PRIVATE_KEY` | RSA private key for header encryption |
-   | `MCP_PUBLIC_URL` | Public URL of MCP server (e.g., `https://mcp.yourdomain.com`) - used in OAuth metadata to tell clients where to connect for MCP traffic |
-
-3. Start the databases:
-   ```bash
-   # PostgreSQL
-   docker run --name x402-postgres \
-     -e POSTGRES_PASSWORD=dev_password \
-     -e POSTGRES_DB=x402_marketplace \
-     -p 5432:5432 -d postgres:15
-
-   # Redis
-   docker run --name x402-redis -p 6379:6379 -d redis:7
-   ```
-
-4. Generate RSA keys:
-   ```bash
-   pnpm generate-keys
-   ```
-
-5. Run database migrations:
-   ```bash
-   pnpm db:push
-   ```
-
-## Running
+Copy the example env first:
 
 ```bash
-# Development (port 3000)
-pnpm dev
+cp .env.example .env.local
+```
 
-# Production build
+Required variables:
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_REOWN_PROJECT_ID` | Reown project ID |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `SESSION_SECRET` | 32+ character secret |
+| `SERVER_PUBLIC_KEY` | RSA public key for header encryption |
+| `SERVER_PRIVATE_KEY` | RSA private key for header encryption |
+| `MCP_PUBLIC_URL` | Public URL of the MCP server |
+| `NEXT_PUBLIC_X402_FACILITATOR_URL` | Public URL of the facilitator service |
+
+Recommended production values:
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_APP_URL` | Public frontend URL, not localhost |
+| `NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS` | Optional override for the deployed AgentDelegator |
+| `NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS` | Optional override for the deployed ActionRouter |
+
+## Run locally
+
+```bash
+pnpm dev
+```
+
+## Build
+
+```bash
 pnpm build
 pnpm start
 ```
 
-## Database Commands
+## Database commands
 
 ```bash
-pnpm db:generate    # Generate migrations from schema changes
-pnpm db:migrate     # Apply migrations
-pnpm db:push        # Push schema directly (dev only)
-pnpm db:studio      # Open Drizzle Studio GUI
+pnpm db:generate
+pnpm db:migrate
+pnpm db:push
+pnpm db:studio
 ```
 
-## Project Structure
+## Architecture
 
+```text
+app/           Next.js pages and route handlers
+features/      UI and state management by domain
+lib/           Shared auth, DB, facilitator, and payment utilities
+components/    Shared UI components
 ```
-app/           # Next.js App Router pages and API routes
-features/      # Feature modules (marketplace, workflows, auth, etc.)
-lib/           # Core utilities (db, redis, contracts, x402)
-components/    # Shared React components
-```
+
+## Submission notes
+
+- The final demo should be hosted at a public URL, not localhost.
+- Include the deployed contract addresses in your DoraHacks submission.
+- Include a demo video link in the submission.
+- The repo already documents the on-chain deployment and architecture.
+

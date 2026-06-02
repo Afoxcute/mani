@@ -2,255 +2,136 @@
 
 **Agents with limits.**
 
-mani is an agent-native x402 execution fabric that enables AI agents to safely interact with paid APIs and on-chain workflows on Cronos EVM, using scoped, programmable permissions.
+mani is an agent-native x402 execution fabric on **Mantle Sepolia**. It lets people publish paid APIs, compose workflows, and let AI agents act through scoped permissions instead of raw private keys.
 
-Agents never access a user's primary private key.
-Instead, they operate via session keys with explicit, enforceable limits — such as which protocol, which asset, and how much value they are allowed to use.
+## What mani does
 
----
+- Publishes pay-per-call API proxies
+- Exposes reusable workflows that mix HTTP calls and on-chain actions
+- Provides an MCP server so AI agents can discover capabilities
+- Uses ERC-7702 / session keys so agents can act with bounded authority
+- Settles x402 payments in MNT on Mantle Sepolia
 
-## What mani Enables
+## Current deployment
 
-- AI agents that can execute on-chain actions safely
-- x402-native APIs with usage-based settlement
-- Composable workflows combining APIs + smart contracts
-- MCP servers for agent discovery and interaction
-- Bounded autonomy via scoped session permissions
+The live contract deployment used by this repo is on Mantle Sepolia.
 
-mani turns APIs and workflows into agent-readable economic primitives, without sacrificing custody or control.
+- `AgentDelegator`
+  - Address: `0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1`
+  - Source: [hardhat/ignition/deployments/chain-5003/deployed_addresses.json](/C:/Users/XPS/mani/hardhat/ignition/deployments/chain-5003/deployed_addresses.json)
+  - Sourcify: https://sourcify.dev/server/repo-ui/5003/0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1
 
----
+- `ActionRouter`
+  - Address: `0x288dA822f469B9e11818dB9fA6EC74e57230342a`
+  - Source: [hardhat/ignition/deployments/chain-5003/deployed_addresses.json](/C:/Users/XPS/mani/hardhat/ignition/deployments/chain-5003/deployed_addresses.json)
+  - Sourcify: https://sourcify.dev/server/repo-ui/5003/0x288dA822f469B9e11818dB9fA6EC74e57230342a
 
-## Why mani Exists
+Verification status:
 
-AI agents are becoming capable of real financial decision-making — but today's execution models are broken:
+- Source verification has been completed for both live Mantle Sepolia contracts via Sourcify.
+- Mantle Explorer verification is wired into Hardhat and can be run by setting `MANTLE_SEPOLIA_EXPLORER_API_KEY`.
 
-- Agents either cannot act at all, or
-- They require full access to private keys, creating unacceptable risk
+## AI-powered on-chain actions
 
-This tradeoff blocks adoption of agentic finance.
+At least one AI-controlled function is callable on-chain:
 
-mani solves this by introducing a permissioned execution layer:
+- `grantSession(...)` on `AgentDelegator`
+- `executeWithSession(...)` on `AgentDelegator` / `ActionRouter`
 
-- autonomy without custody
-- composability without danger
-- automation without hot wallets
+Those flows let an agent create scoped session permissions and execute approved actions on-chain without access to the owner key.
 
-```mermaid
-flowchart LR
-  subgraph TODAY["Today (Broken Model)"]
-    A1["AI Agent"] --> W1["Wallet / EOA\nFull private key access"]
-    W1 --> X1["On-chain actions"]
-    W1 --> Y1["APIs"]
-    NOTE1["Unlimited permissions\nHigh blast radius\nUnsafe for automation"]:::warn
-  end
-
-  subgraph AF["mani Model (Bounded Autonomy)"]
-    A2["AI Agent"] --> S2["Scoped Session Key\n(least privilege)"]
-    S2 --> F2["mani\nPermission Enforcement"]:::good
-    F2 --> API2["x402 APIs\nPaid, usage-based"]
-    F2 --> C2["Cronos EVM\nSmart Account + Protocols"]
-    P2["Allowed protocol\nAllowed asset\nMax value\nAllowed methods"]:::good
-  end
-
-  classDef warn fill:#2b1b1b,stroke:#ff6b6b,stroke-width:2px,color:#ffffff;
-  classDef good fill:#152a20,stroke:#4ade80,stroke-width:2px,color:#ffffff;
-
-```
-
----
-
-## Core Architecture
-
-mani is built around five core primitives:
-
-### 1. Smart Account Upgrade
-
-A standard EOA is upgraded into a smart account capable of enforcing:
-
-- session keys
-- scoped permissions
-- bounded execution
-
-The primary key is never shared.
-
----
-
-### 2. Scoped Session Keys
-
-Session keys define exactly what an agent can do, including:
-
-- allowed contracts / protocols
-- permitted assets
-- maximum value
-- specific methods (e.g. swap only)
-
-This follows the principle of least privilege.
-
-```mermaid
-flowchart TB
-  OWNER["Primary Key (Owner)\nNever shared with agent"]:::owner
-
-  SA["Smart Account (Cronos EVM)\nPermission Engine + Enforcement"]:::good
-  OWNER --> SA
-
-  SK["Session Key (Delegated)\n- Valid until: timeboxed\n- Allowed protocol: WolfSwap\n- Allowed methods: swap()\n- Max spend: 5 CRO\n- Optional: allowed assets"]:::good
-
-  AG["AI Agent"] --> SK
-  SK --> SA
-
-  SA --> CHAIN["Cronos EVM\nDEX / Protocol Contracts"]:::chain
-
-  classDef owner fill:#1f2430,stroke:#93c5fd,stroke-width:2px,color:#ffffff;
-  classDef good fill:#152a20,stroke:#4ade80,stroke-width:2px,color:#ffffff;
-  classDef chain fill:#1c1c1c,stroke:#a78bfa,stroke-width:2px,color:#ffffff;
-```
-
----
-
-### 3. x402 API Proxies
-
-Any API can be wrapped as an x402-compatible, usage-based endpoint, allowing:
-
-- programmatic payment
-- agent-native consumption
-- composable economic primitives
-
----
-
-### 4. Workflow Engine
-
-Multi-step workflows combine:
-
-- x402 API calls
-- on-chain actions
-- conditional logic
-
-Workflows are reusable, permissionable, and agent-readable.
+## Architecture
 
 ```mermaid
 flowchart LR
-  API["Standard API"] --> PROXY["x402 API Proxy\nUsage-based settlement"]:::good
-
-  subgraph WF["Workflow Engine"]
-    A["x402 API Call(s)"] --> W["Composable Workflow\nReusable + Permissionable\nAgent-readable"]:::good
-    B["On-chain Action(s)\n(Cronos EVM)"] --> W
-    C["Optional: Conditional Logic\n(routing / checks)"] --> W
-  end
-
-  W --> MCP["MCP Server\nPublish capabilities to agents"]
-  MCP --> AG["AI Agent"]
-
-  classDef good fill:#152a20,stroke:#4ade80,stroke-width:2px,color:#ffffff;
+  A[AI Agent] --> M[MCP Server]
+  M --> W[Workflow Engine]
+  M --> P[x402 API Proxies]
+  W --> C[ActionRouter / AgentDelegator]
+  P --> S[Paid HTTP APIs]
+  C --> L[Mantle Sepolia]
 ```
 
----
+### Components
 
-### 5. MCP Servers
+- `apps/web` - public frontend, dashboard, API proxy editor, workflow builder
+- `apps/mcp-server` - MCP server for agent discovery and tool execution
+- `apps/facilitator` - standalone x402 facilitator service
+- `hardhat` - contracts, deployment scripts, and verification
+- `packages/contracts` - contract addresses and ABIs
+- `packages/payment` - payment helpers and shared x402 logic
 
-Selected APIs and workflows are exposed as MCP servers, enabling:
+## Technical deployment checklist
 
-- agent discovery
-- standardized invocation
-- safe execution surfaces for AI systems like ChatGPT and Claude
+- [x] Smart contract deployed on Mantle Sepolia
+- [x] On-chain agent functions available (`grantSession`, `executeWithSession`)
+- [x] Public contract addresses documented in this repo
+- [x] Mantle Sepolia deployment wired into the source
+- [ ] Frontend demo publicly accessible at `https://<your-public-web-app-url>`
+- [ ] DoraHacks submission includes the deployed contract addresses
+- [ ] Demo video uploaded and linked in the submission
+- [x] Open-source GitHub repo with setup instructions and architecture overview
 
----
+## Product checklist for submission
 
-## End-to-End Flow (High Level)
+Use these values in your DoraHacks submission:
 
+- Deployment address:
+  - `AgentDelegator: 0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1`
+  - `ActionRouter: 0x288dA822f469B9e11818dB9fA6EC74e57230342a`
+- Frontend demo URL:
+  - `https://<your-public-web-app-url>`
+- MCP server URL:
+  - `https://<your-public-mcp-url>`
+- Facilitator URL:
+  - `https://<your-public-facilitator-url>`
+- Demo video:
+  - `https://<your-demo-video-url>`
 
-1. A developer or user defines APIs and workflows
-2. A smart account is deployed or upgraded
-3. A scoped session key is generated for an agent
-4. APIs and workflows are exposed via an MCP server
-5. The agent discovers, reasons, and executes within strict boundaries
-6. Transactions settle on Cronos using x402-compatible flows
+## Setup
 
-**Result:** autonomous execution without autonomous risk.
-
-```mermaid
-flowchart LR
-  AG["AI Agent\n(ChatGPT / Claude / Custom Agent)"] --> MCP["MCP Server\nAgent-facing execution surface\nDiscoverable capabilities"]
-  MCP --> AF["mani\nx402 Execution Layer\nAPI Proxies + Workflow Engine\nPermission Enforcement"]:::good
-  AF --> X402["x402 APIs\nPaid, usage-based settlement"]
-  AF --> CR["Cronos EVM\nSmart Account + DeFi Protocols"]:::good
-
-  SK["Scoped Session Key\nAllowed protocol / asset / methods\nMax value + expiry"]:::good
-  AG -. uses .-> SK
-  SK -. authorizes .-> AF
-
-  classDef good fill:#152a20,stroke:#4ade80,stroke-width:2px,color:#ffffff;
+```bash
+pnpm install
 ```
 
----
+### Web app
 
-## Demo Scenario (Hackathon Highlight)
+```bash
+cp apps/web/.env.example apps/web/.env.local
+pnpm --filter web dev
+```
 
-In the demo, mani shows an AI agent performing the following task:
+### MCP server
 
-> "Find the top trending token on Cronos today and buy 5 CRO worth of it."
+```bash
+cp apps/mcp-server/.env.example apps/mcp-server/.env
+pnpm --filter mcp-server dev
+```
 
-Using mani, the agent:
+### Facilitator
 
-1. Queries a paid x402 API for trending tokens
-2. Selects the top result
-3. Executes a swap via a prebuilt WolfSwap DEX aggregation workflow
-4. Settles the transaction on Cronos EVM
+```bash
+cp apps/facilitator/.env.example apps/facilitator/.env
+pnpm --filter facilitator dev
+```
 
-At no point does the agent access the user's private key.
-All actions are executed within scoped permissions.
+### Contracts
 
----
+```bash
+cd hardhat
+pnpm install
+HACKATHON_KEY=0x... npx hardhat ignition deploy ignition/modules/ActionRouter.ts --network mantleSepolia
+```
 
-## Built for Cronos & x402
+## Deployment notes
 
-mani is:
-
-- deployed on Cronos EVM
-- designed for x402-style programmatic payments
-- compatible with Crypto.com ecosystem tooling
-- aligned with agentic finance and AI-native infrastructure
-
-This makes Cronos a safe, first-class execution environment for AI agents.
-
----
-
-## Use Cases
-
-- Agent-triggered DeFi actions
-- Automated portfolio management
-- Risk-bounded trading bots
-- Paid API access for AI agents
-- Agent-readable developer tooling
-- Institutional-grade agent workflows
-
----
-
-## Hackathon Tracks
-
-mani qualifies for:
-
-- Main Track — x402 Applications
-- x402 Agentic Finance / Payment Track
-- Crypto.com x Cronos Ecosystem Integration
-- Dev Tooling & Data Virtualization Track
-
----
-
-## License
-
-MIT
-
----
+- The frontend should be deployed to a public URL. Do not use localhost for the final demo.
+- The MCP server is meant to run on a public host with `MCP_PUBLIC_URL` set.
+- The facilitator can run as a standalone service and should also be public if the web app is using it directly.
+- Mantle Sepolia is the active chain for the current repo state.
 
 ## Links
 
-- Website: https://mani.tools
-- Demo: https://www.youtube.com/watch?v=xfvH6TqvJd8
-- Hackathon Submission: https://dorahacks.io/buidl/38376
-
-### Source Code
-
-- [Smart Account & Session Keys](https://github.com/nschwermann/agent_fabric/tree/main/hardhat) — ERC-7702 delegation contracts with scoped permissions
-- [x402 Proxies & Workflows](https://github.com/nschwermann/agent_fabric/tree/main/apps/web) — Next.js app for API proxies, workflows, and marketplace
-- [MCP Server](https://github.com/nschwermann/agent_fabric/tree/main/apps/mcp-server) — Express server exposing tools and workflows via MCP protocol
+- Source repo: this repository
+- Hackathon submission: add your DoraHacks link here
+- Demo video: add your video link here
