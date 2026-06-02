@@ -1,4 +1,4 @@
-name: Build MCP Docker Image
+name: Build and Deploy MCP Docker Image
 
 on:
   push:
@@ -29,3 +29,65 @@ jobs:
           tags: bottie-mcp:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.MCP_SSH_KEY }}
+
+      - name: Trust deployment host
+        env:
+          MCP_SSH_HOST: ${{ secrets.MCP_SSH_HOST }}
+          MCP_SSH_PORT: ${{ secrets.MCP_SSH_PORT || 22 }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$MCP_SSH_PORT" "$MCP_SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy MCP server on Ubuntu
+        env:
+          MCP_SSH_HOST: ${{ secrets.MCP_SSH_HOST }}
+          MCP_SSH_USER: ${{ secrets.MCP_SSH_USER }}
+          MCP_SSH_PORT: ${{ secrets.MCP_SSH_PORT || 22 }}
+          MCP_DEPLOY_PATH: ${{ secrets.MCP_DEPLOY_PATH }}
+          MCP_ENV_FILE: ${{ secrets.MCP_ENV_FILE || '/opt/mani/apps/mcp-server/.env' }}
+          MCP_CONTAINER_NAME: ${{ secrets.MCP_CONTAINER_NAME || 'bottie-mcp' }}
+          MCP_IMAGE_NAME: ${{ secrets.MCP_IMAGE_NAME || 'bottie-mcp' }}
+          MCP_HOST_PORT: ${{ secrets.MCP_HOST_PORT || 3001 }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+        run: |
+          ssh -p "$MCP_SSH_PORT" "$MCP_SSH_USER@$MCP_SSH_HOST" \
+            "DEPLOY_PATH='$MCP_DEPLOY_PATH' ENV_FILE='$MCP_ENV_FILE' CONTAINER_NAME='$MCP_CONTAINER_NAME' IMAGE_NAME='$MCP_IMAGE_NAME' HOST_PORT='$MCP_HOST_PORT' DEPLOY_BRANCH='$DEPLOY_BRANCH' bash -se" <<'EOF'
+          set -euo pipefail
+
+          cd "$DEPLOY_PATH"
+
+          if [ ! -d .git ]; then
+            echo "[deploy] ERROR: $DEPLOY_PATH is not a git repository"
+            exit 1
+          fi
+
+          git fetch origin "$DEPLOY_BRANCH"
+          git reset --hard "origin/$DEPLOY_BRANCH"
+
+          docker build -f Dockerfile.mcp -t "$IMAGE_NAME" .
+
+          docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
+          docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
+
+          docker run -d \
+            --restart unless-stopped \
+            --name "$CONTAINER_NAME" \
+            --env-file "$ENV_FILE" \
+            -p "$HOST_PORT:3001" \
+            "$IMAGE_NAME"
+
+          docker image prune -f >/dev/null 2>&1 || true
+          EOF

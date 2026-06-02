@@ -63,6 +63,28 @@ Notes:
 - `NEXT_APP_URL` should point at the web app reachable from the container.
 - `MCP_PUBLIC_URL` should be the externally reachable URL of the MCP server when you deploy it behind a proxy.
 
+## GitHub Actions Deploy to Ubuntu
+
+The included workflow at [/.github/workflows/mcp-docker.yml](/C:/Users/XPS/mani/.github/workflows/mcp-docker.yml) SSHes into an Ubuntu server and runs the same Docker build and restart flow.
+
+Required GitHub secrets:
+- `MCP_SSH_HOST`
+- `MCP_SSH_USER`
+- `MCP_SSH_KEY`
+- `MCP_SSH_PORT` (optional, defaults to `22`)
+- `MCP_DEPLOY_PATH` (absolute path to the repo root on the Ubuntu server)
+- `MCP_ENV_FILE` (optional, defaults to `/opt/mani/apps/mcp-server/.env`)
+- `MCP_CONTAINER_NAME` (optional, defaults to `bottie-mcp`)
+- `MCP_IMAGE_NAME` (optional, defaults to `bottie-mcp`)
+- `MCP_HOST_PORT` (optional, defaults to `3001`)
+
+Ubuntu server prerequisites:
+- Docker is installed and the deploy user can run it
+- The repo is already cloned at `MCP_DEPLOY_PATH`
+- The server env file exists at `MCP_ENV_FILE`
+- That env file contains `DATABASE_URL`, `SERVER_PRIVATE_KEY`, `MCP_CLIENT_SECRET`, and the other runtime variables listed above
+- The server can reach the database and Redis from its network
+
 ## API Endpoints
 
 | Endpoint | Description |
