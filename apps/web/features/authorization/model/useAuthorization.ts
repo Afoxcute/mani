@@ -58,6 +58,38 @@ function buildWorkflowTargetsScope(targets: WorkflowTarget[]): ExecuteScope | nu
   }
 }
 
+async function readResponseDetails(response: Response): Promise<{
+  bodyText: string
+  parsedBody: unknown | null
+}> {
+  const bodyText = await response.text()
+
+  if (!bodyText.trim()) {
+    return { bodyText: '', parsedBody: null }
+  }
+
+  try {
+    return { bodyText, parsedBody: JSON.parse(bodyText) as unknown }
+  } catch {
+    return { bodyText, parsedBody: null }
+  }
+}
+
+function formatResponseError(
+  context: string,
+  response: Response,
+  bodyText: string,
+  parsedBody: unknown | null
+): string {
+  const statusLine = `${context} failed with HTTP ${response.status} ${response.statusText || ''}`.trim()
+  const details =
+    parsedBody && typeof parsedBody === 'object'
+      ? JSON.stringify(parsedBody, null, 2)
+      : bodyText.trim()
+
+  return details ? `${statusLine}\n\n${details}` : `${statusLine}\n\nNo response body returned`
+}
+
 /**
  * Fetch OAuth client info from the authorize endpoint
  */
@@ -80,13 +112,26 @@ async function fetchClientInfo(params: OAuthParams): Promise<OAuthClientInfo> {
   if (mcpSlug) searchParams.set('mcp_slug', mcpSlug)
 
   const response = await fetch(`/api/oauth/authorize?${searchParams}`)
+  const { bodyText, parsedBody } = await readResponseDetails(response)
 
   if (!response.ok) {
-    const data = await response.json()
-    throw new Error(data.error || 'Failed to fetch client info')
+    const errorMessage = formatResponseError('OAuth client lookup', response, bodyText, parsedBody)
+    console.error('[fetchClientInfo] Non-OK response:', {
+      url: response.url,
+      status: response.status,
+      statusText: response.statusText,
+      body: bodyText,
+      parsedBody,
+    })
+    throw new Error(errorMessage)
   }
 
-  return response.json()
+  if (!parsedBody || typeof parsedBody !== 'object') {
+    console.error('[fetchClientInfo] Expected JSON but received:', bodyText)
+    throw new Error('OAuth client lookup returned invalid JSON')
+  }
+
+  return parsedBody as OAuthClientInfo
 }
 
 /**
@@ -114,13 +159,25 @@ async function createAuthorizationCode(params: {
       mcp_slug: params.mcpSlug,
     }),
   })
+  const { bodyText, parsedBody } = await readResponseDetails(response)
 
   if (!response.ok) {
-    const data = await response.json()
-    throw new Error(data.error || 'Failed to create authorization')
+    const errorMessage = formatResponseError('OAuth authorization', response, bodyText, parsedBody)
+    console.error('[createAuthorizationCode] Non-OK response:', {
+      status: response.status,
+      statusText: response.statusText,
+      body: bodyText,
+      parsedBody,
+    })
+    throw new Error(errorMessage)
   }
 
-  return response.json()
+  if (!parsedBody || typeof parsedBody !== 'object') {
+    console.error('[createAuthorizationCode] Expected JSON but received:', bodyText)
+    throw new Error('OAuth authorization returned invalid JSON')
+  }
+
+  return parsedBody as { redirect_uri: string }
 }
 
 /**

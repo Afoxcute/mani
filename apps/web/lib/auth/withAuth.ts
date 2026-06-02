@@ -37,8 +37,23 @@ export function withAuth(
 
       return handler(user, request, context)
     } catch (error) {
-      console.error('[withAuth] Error:', error)
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+      const message = error instanceof Error ? error.message : 'Internal server error'
+      const details = error instanceof Error ? error.stack ?? error.message : String(error)
+
+      console.error('[withAuth] Error:', {
+        message,
+        details,
+        error,
+      })
+
+      return NextResponse.json(
+        {
+          error: 'Internal server error',
+          message,
+          details,
+        },
+        { status: 500 }
+      )
     }
   }
 }
@@ -55,8 +70,23 @@ export function withOptionalAuth(
       const user = await getCurrentUser()
       return handler(user, request, context)
     } catch (error) {
-      console.error('[withOptionalAuth] Error:', error)
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+      const message = error instanceof Error ? error.message : 'Internal server error'
+      const details = error instanceof Error ? error.stack ?? error.message : String(error)
+
+      console.error('[withOptionalAuth] Error:', {
+        message,
+        details,
+        error,
+      })
+
+      return NextResponse.json(
+        {
+          error: 'Internal server error',
+          message,
+          details,
+        },
+        { status: 500 }
+      )
     }
   }
 }

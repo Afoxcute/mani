@@ -28,139 +28,160 @@ import type { WorkflowDefinition } from '@/lib/db/schema'
  * - mcp_slug: (Optional) MCP server slug to scope the authorization
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
+  try {
+    const { searchParams } = new URL(request.url)
 
-  const clientId = searchParams.get('client_id')
-  const redirectUri = searchParams.get('redirect_uri')
-  const responseType = searchParams.get('response_type')
-  const codeChallenge = searchParams.get('code_challenge')
-  const codeChallengeMethod = searchParams.get('code_challenge_method')
-  const scopeParam = searchParams.get('scope')
-  const state = searchParams.get('state')
-  const mcpSlug = searchParams.get('mcp_slug') // Optional MCP server slug
+    const clientId = searchParams.get('client_id')
+    const redirectUri = searchParams.get('redirect_uri')
+    const responseType = searchParams.get('response_type')
+    const codeChallenge = searchParams.get('code_challenge')
+    const codeChallengeMethod = searchParams.get('code_challenge_method')
+    const scopeParam = searchParams.get('scope')
+    const state = searchParams.get('state')
+    const mcpSlug = searchParams.get('mcp_slug') // Optional MCP server slug
 
-  // Validate required params
-  if (!clientId) {
-    return NextResponse.json({ error: 'missing_client_id' }, { status: 400 })
-  }
-  if (!redirectUri) {
-    return NextResponse.json({ error: 'missing_redirect_uri' }, { status: 400 })
-  }
-  if (responseType !== 'code') {
-    return NextResponse.json({ error: 'unsupported_response_type' }, { status: 400 })
-  }
-  if (!codeChallenge) {
-    return NextResponse.json({ error: 'missing_code_challenge' }, { status: 400 })
-  }
-  if (codeChallengeMethod !== 'S256') {
-    return NextResponse.json({ error: 'unsupported_code_challenge_method' }, { status: 400 })
-  }
-  if (!scopeParam) {
-    return NextResponse.json({ error: 'missing_scope' }, { status: 400 })
-  }
+    // Validate required params
+    if (!clientId) {
+      return NextResponse.json({ error: 'missing_client_id' }, { status: 400 })
+    }
+    if (!redirectUri) {
+      return NextResponse.json({ error: 'missing_redirect_uri' }, { status: 400 })
+    }
+    if (responseType !== 'code') {
+      return NextResponse.json({ error: 'unsupported_response_type' }, { status: 400 })
+    }
+    if (!codeChallenge) {
+      return NextResponse.json({ error: 'missing_code_challenge' }, { status: 400 })
+    }
+    if (codeChallengeMethod !== 'S256') {
+      return NextResponse.json({ error: 'unsupported_code_challenge_method' }, { status: 400 })
+    }
+    if (!scopeParam) {
+      return NextResponse.json({ error: 'missing_scope' }, { status: 400 })
+    }
 
-  // Get the client
-  const client = await getOAuthClient(clientId)
-  if (!client) {
-    return NextResponse.json({ error: 'invalid_client' }, { status: 400 })
-  }
+    // Get the client
+    const client = await getOAuthClient(clientId)
+    if (!client) {
+      return NextResponse.json({ error: 'invalid_client' }, { status: 400 })
+    }
 
-  // Use mcp_slug from URL or fall back to client's stored slug
-  const effectiveSlug = mcpSlug || client.mcpSlug
+    // Use mcp_slug from URL or fall back to client's stored slug
+    const effectiveSlug = mcpSlug || client.mcpSlug
 
-  // Validate redirect URI
-  if (!validateRedirectUri(client, redirectUri)) {
-    return NextResponse.json({ error: 'invalid_redirect_uri' }, { status: 400 })
-  }
+    // Validate redirect URI
+    if (!validateRedirectUri(client, redirectUri)) {
+      return NextResponse.json({ error: 'invalid_redirect_uri' }, { status: 400 })
+    }
 
-  // Parse and validate scopes
-  const requestedScopes = scopeParam.split(' ').filter(Boolean)
-  const scopeValidation = validateScopes(client, requestedScopes)
+    // Parse and validate scopes
+    const requestedScopes = scopeParam.split(' ').filter(Boolean)
+    const scopeValidation = validateScopes(client, requestedScopes)
 
-  if (!scopeValidation.valid) {
-    return NextResponse.json({
-      error: 'invalid_scope',
-      invalid_scopes: scopeValidation.invalidScopes,
-    }, { status: 400 })
-  }
+    if (!scopeValidation.valid) {
+      return NextResponse.json({
+        error: 'invalid_scope',
+        invalid_scopes: scopeValidation.invalidScopes,
+      }, { status: 400 })
+    }
 
-  // Build scope details for the consent page
-  const scopeDetails = requestedScopes.map(scopeId => {
-    const template = getScopeTemplateById(scopeId)
-    if (template) {
-      const scope = template.factory()
+    // Build scope details for the consent page
+    const scopeDetails = requestedScopes.map(scopeId => {
+      const template = getScopeTemplateById(scopeId)
+      if (template) {
+        const scope = template.factory()
+        return {
+          id: scopeId,
+          name: scope.name,
+          description: scope.description,
+          type: scope.type,
+          budgetEnforceable: scope.budgetEnforceable,
+        }
+      }
       return {
         id: scopeId,
-        name: scope.name,
-        description: scope.description,
-        type: scope.type,
-        budgetEnforceable: scope.budgetEnforceable,
+        name: scopeId,
+        description: 'Unknown scope',
+        type: 'unknown',
+        budgetEnforceable: false,
       }
-    }
-    return {
-      id: scopeId,
-      name: scopeId,
-      description: 'Unknown scope',
-      type: 'unknown',
-      budgetEnforceable: false,
-    }
-  })
-
-  // If mcp_slug is available, fetch workflows and their scope requirements
-  let workflowTargets: { address: string; name?: string; description?: string; workflowName: string }[] = []
-
-  if (effectiveSlug) {
-    // Get MCP server by slug
-    const mcpServer = await db.query.mcpServers.findFirst({
-      where: eq(mcpServers.slug, effectiveSlug),
     })
 
-    if (mcpServer) {
-      // Get all workflows attached to this server
-      const serverWorkflows = await db.query.mcpServerWorkflows.findMany({
-        where: and(
-          eq(mcpServerWorkflows.mcpServerId, mcpServer.id),
-          eq(mcpServerWorkflows.isEnabled, true)
-        ),
+    // If mcp_slug is available, fetch workflows and their scope requirements
+    let workflowTargets: { address: string; name?: string; description?: string; workflowName: string }[] = []
+
+    if (effectiveSlug) {
+      // Get MCP server by slug
+      const mcpServer = await db.query.mcpServers.findFirst({
+        where: eq(mcpServers.slug, effectiveSlug),
       })
 
-      // Extract scope config from each workflow
-      for (const sw of serverWorkflows) {
-        const workflow = await db.query.workflowTemplates.findFirst({
-          where: eq(workflowTemplates.id, sw.workflowId),
+      if (mcpServer) {
+        // Get all workflows attached to this server
+        const serverWorkflows = await db.query.mcpServerWorkflows.findMany({
+          where: and(
+            eq(mcpServerWorkflows.mcpServerId, mcpServer.id),
+            eq(mcpServerWorkflows.isEnabled, true)
+          ),
         })
 
-        if (workflow) {
-          const definition = workflow.workflowDefinition as WorkflowDefinition
-          const dynamicTargets = definition.scopeConfig?.allowedDynamicTargets ?? []
+        // Extract scope config from each workflow
+        for (const sw of serverWorkflows) {
+          const workflow = await db.query.workflowTemplates.findFirst({
+            where: eq(workflowTemplates.id, sw.workflowId),
+          })
 
-          for (const target of dynamicTargets) {
-            workflowTargets.push({
-              address: target.address,
-              name: target.name,
-              description: target.description,
-              workflowName: workflow.name,
-            })
+          if (workflow) {
+            const definition = workflow.workflowDefinition as WorkflowDefinition
+            const dynamicTargets = definition.scopeConfig?.allowedDynamicTargets ?? []
+
+            for (const target of dynamicTargets) {
+              workflowTargets.push({
+                address: target.address,
+                name: target.name,
+                description: target.description,
+                workflowName: workflow.name,
+              })
+            }
           }
         }
       }
     }
-  }
 
-  // Return client info for consent page
-  return NextResponse.json({
-    client: {
-      id: client.id,
-      name: client.name,
-      description: client.description,
-      logoUrl: client.logoUrl,
-    },
-    scopes: scopeDetails,
-    redirectUri,
-    state,
-    mcpSlug: effectiveSlug, // Include slug (from URL or client record)
-    workflowTargets, // Include workflow dynamic targets
-  })
+    // Return client info for consent page
+    return NextResponse.json({
+      client: {
+        id: client.id,
+        name: client.name,
+        description: client.description,
+        logoUrl: client.logoUrl,
+      },
+      scopes: scopeDetails,
+      redirectUri,
+      state,
+      mcpSlug: effectiveSlug, // Include slug (from URL or client record)
+      workflowTargets, // Include workflow dynamic targets
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    const details = error instanceof Error ? error.stack ?? error.message : String(error)
+
+    console.error('[GET /api/oauth/authorize] Unexpected error:', {
+      message,
+      details,
+      error,
+      url: request.url,
+    })
+
+    return NextResponse.json(
+      {
+        error: 'internal_server_error',
+        message,
+        details,
+      },
+      { status: 500 }
+    )
+  }
 }
 
 /**
