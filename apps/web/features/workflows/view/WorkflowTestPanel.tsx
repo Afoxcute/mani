@@ -125,23 +125,44 @@ export function WorkflowTestPanel({ workflow }: { workflow: WorkflowDetail }) {
         )}
 
         {/* Run Button */}
-        <Button
-          className="w-full"
-          onClick={runTest}
-          disabled={isRunning}
-        >
-          {isRunning ? (
-            <>
-              <Loader2 className="size-4 mr-2 animate-spin" />
-              Running...
-            </>
-          ) : (
-            <>
-              <Play className="size-4 mr-2" />
-              Dry Run
-            </>
-          )}
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => runTest(true)}
+            disabled={isRunning}
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="size-4 mr-2 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <Play className="size-4 mr-2" />
+                Dry Run
+              </>
+            )}
+          </Button>
+
+          <Button
+            type="button"
+            onClick={() => runTest(false)}
+            disabled={isRunning}
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="size-4 mr-2 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <Play className="size-4 mr-2" />
+                Live Run
+              </>
+            )}
+          </Button>
+        </div>
 
         {/* Results */}
         {result && (
@@ -288,7 +309,7 @@ export function WorkflowTestPanel({ workflow }: { workflow: WorkflowDetail }) {
         {/* Help Text */}
         <div className="text-xs text-muted-foreground pt-4 border-t space-y-1">
           <p><strong>Dry Run:</strong> Simulates workflow execution without making actual API calls or on-chain transactions.</p>
-          <p>HTTP steps will be validated but not executed. On-chain steps will show what calldata would be generated.</p>
+          <p><strong>Live Run:</strong> Executes HTTP steps against the real API/proxy and returns the actual response body. On-chain steps are still simulated in the test panel.</p>
         </div>
       </CardContent>
     </Card>

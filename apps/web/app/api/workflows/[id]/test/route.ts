@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db, workflowTemplates } from '@/lib/db'
+import { db, apiProxies, workflowTemplates } from '@/lib/db'
 import { eq, and } from 'drizzle-orm'
+import { decryptHybrid, type HybridEncryptedData } from '@/lib/crypto/encryption'
 import { withAuth } from '@/lib/auth'
 import type { WorkflowDefinition, WorkflowStep, OnchainOperation } from '@/lib/db/schema'
 import { encodeFunctionData, parseAbiItem } from 'viem'
+import {
+  substituteVariables,
+  validateVariables,
+  type VariableDefinition,
+} from '@/features/proxy/model/variables'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -94,6 +100,14 @@ function resolveMapping(
   return resolved
 }
 
+function tryParseJson(value: string): unknown {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
 /**
  * Simulate an HTTP step (dry run mode)
  */
@@ -118,6 +132,147 @@ function simulateHttpStep(step: WorkflowStep, context: {
       method: step.http.method,
       body: resolvedBody,
     },
+  }
+}
+
+async function executeHttpStepLive(step: WorkflowStep, context: {
+  input: Record<string, unknown>
+  steps: Record<string, { output: unknown }>
+  wallet: string
+  chainId: number
+}): Promise<{ output: unknown; error?: string }> {
+  if (!step.http) {
+    return { output: null, error: 'HTTP configuration missing' }
+  }
+
+  let method = (step.http.method || 'GET').toUpperCase()
+  const headers = new Headers()
+  headers.set('accept', 'application/json, text/plain, */*')
+
+  let targetUrl = step.http.url
+  let variablesSchema: VariableDefinition[] = []
+
+  if (step.http.proxyId) {
+    const proxy = await db.query.apiProxies.findFirst({
+      where: eq(apiProxies.id, step.http.proxyId),
+    })
+
+    if (!proxy) {
+      return { output: null, error: `Proxy not found: ${step.http.proxyId}` }
+    }
+
+    const proxyVariablesSchema = (proxy.variablesSchema ?? []) as VariableDefinition[]
+    variablesSchema = proxyVariablesSchema
+    method = (proxy.httpMethod || method || 'GET').toUpperCase()
+
+    const validation = validateVariables(proxyVariablesSchema, context.input)
+    if (!validation.valid) {
+      return {
+        output: null,
+        error: validation.errors.join(', '),
+      }
+    }
+
+    targetUrl = proxy.targetUrl
+
+    if (proxy.encryptedHeaders) {
+      try {
+        const decryptedHeaders = decryptHybrid(proxy.encryptedHeaders as HybridEncryptedData)
+        for (const [key, value] of Object.entries(decryptedHeaders)) {
+          headers.set(key, value)
+        }
+      } catch (error) {
+        return {
+          output: null,
+          error: `Failed to decrypt proxy headers: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        }
+      }
+    }
+
+    if (proxy.contentType) {
+      headers.set('content-type', proxy.contentType)
+    }
+
+    if (proxy.queryParamsTemplate) {
+      const substitutedParams = substituteVariables(proxy.queryParamsTemplate, context.input, proxyVariablesSchema)
+      const separator = targetUrl.includes('?') ? '&' : '?'
+      targetUrl = `${targetUrl}${separator}${substitutedParams}`
+    }
+  } else if (step.http.url) {
+    if (step.http.bodyMapping) {
+      const resolvedBody = resolveMapping(step.http.bodyMapping, context)
+      if (resolvedBody !== undefined) {
+        headers.set('content-type', 'application/json')
+      }
+    }
+  }
+
+  if (!targetUrl) {
+    return { output: null, error: 'HTTP step missing target URL' }
+  }
+
+  let body: BodyInit | undefined
+  if (method !== 'GET' && method !== 'HEAD') {
+    if (step.http.proxyId) {
+      const proxy = await db.query.apiProxies.findFirst({
+        where: eq(apiProxies.id, step.http.proxyId),
+      })
+
+      if (proxy?.requestBodyTemplate) {
+        body = substituteVariables(proxy.requestBodyTemplate, context.input, variablesSchema)
+      }
+    } else if (step.http.bodyMapping) {
+      const resolvedBody = resolveMapping(step.http.bodyMapping, context)
+      if (resolvedBody !== undefined) {
+        body = JSON.stringify(resolvedBody)
+      }
+    }
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30_000)
+
+  try {
+    const response = await fetch(targetUrl, {
+      method,
+      headers,
+      body,
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    const rawBody = await response.text()
+    const contentType = response.headers.get('content-type') || ''
+    const parsedBody = contentType.includes('application/json')
+      ? tryParseJson(rawBody)
+      : rawBody
+
+    if (!response.ok) {
+      return {
+        output: {
+          status: response.status,
+          statusText: response.statusText,
+          body: parsedBody,
+        },
+        error: `HTTP request failed with status ${response.status} ${response.statusText}`,
+      }
+    }
+
+    return {
+      output: parsedBody,
+    }
+  } catch (error) {
+    clearTimeout(timeoutId)
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      return { output: null, error: 'HTTP request timed out' }
+    }
+
+    return {
+      output: null,
+      error: error instanceof Error ? error.message : 'Unknown HTTP execution error',
+    }
   }
 }
 
@@ -313,11 +468,12 @@ function simulateOnchainStep(step: WorkflowStep, context: {
 /**
  * Run a dry-run test of the workflow
  */
-function runDryTest(
+async function runTestExecution(
   workflow: WorkflowDefinition,
   inputs: Record<string, unknown>,
-  wallet: string
-): TestResult {
+  wallet: string,
+  dryRun: boolean
+): Promise<TestResult> {
   const context = {
     input: inputs,
     steps: {} as Record<string, { output: unknown }>,
@@ -334,7 +490,9 @@ function runDryTest(
     try {
       switch (step.type) {
         case 'http':
-          result = simulateHttpStep(step, context)
+          result = dryRun
+            ? simulateHttpStep(step, context)
+            : await executeHttpStepLive(step, context)
           break
         case 'onchain':
         case 'onchain_batch':
@@ -420,10 +578,11 @@ export const POST = withAuth(async (user, request, context) => {
   }
 
   // Run the test
-  const result = runDryTest(
+  const result = await runTestExecution(
     workflow.workflowDefinition,
     inputs || {},
-    user.walletAddress
+    user.walletAddress,
+    dryRun
   )
 
   return NextResponse.json(result)

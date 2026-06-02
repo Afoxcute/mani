@@ -1,0 +1,12 @@
+.git
+.DS_Store
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.turbo
+.env
+.env.*
+apps/web
+hardhat

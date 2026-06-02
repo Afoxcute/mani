@@ -43,7 +43,7 @@ export interface UseWorkflowTestReturn {
   isRunning: boolean
   result: WorkflowTestResult | null
   error: string | null
-  runTest: () => Promise<void>
+  runTest: (dryRun?: boolean) => Promise<void>
 }
 
 /**
@@ -80,7 +80,7 @@ export function useWorkflowTest(workflow: WorkflowDetail): UseWorkflowTestReturn
     return result.error
   }, [result])
 
-  const runTest = useCallback(async () => {
+  const runTest = useCallback(async (dryRun = true) => {
     // Validate inputs before running
     const errors = validateWorkflowInputs(workflow.inputSchema, inputs)
     if (Object.keys(errors).length > 0) {
@@ -101,7 +101,7 @@ export function useWorkflowTest(workflow: WorkflowDetail): UseWorkflowTestReturn
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           inputs,
-          dryRun: true,
+          dryRun,
         }),
       })
 

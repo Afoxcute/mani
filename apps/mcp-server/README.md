@@ -36,6 +36,33 @@ pnpm build
 pnpm start
 ```
 
+## Docker
+
+Build from the repository root:
+
+```bash
+docker build -f Dockerfile.mcp -t bottie-mcp .
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 3001:3001 \
+  -e DATABASE_URL=postgres://... \
+  -e REDIS_URL=redis://... \
+  -e NEXT_APP_URL=http://host.docker.internal:3000 \
+  -e MCP_PUBLIC_URL=https://your-mcp-domain.com \
+  -e SERVER_PRIVATE_KEY=... \
+  -e MCP_CLIENT_SECRET=... \
+  -e CHAIN_ID=5003 \
+  bottie-mcp
+```
+
+Notes:
+- The container listens on `PORT=3001`.
+- `NEXT_APP_URL` should point at the web app reachable from the container.
+- `MCP_PUBLIC_URL` should be the externally reachable URL of the MCP server when you deploy it behind a proxy.
+
 ## API Endpoints
 
 | Endpoint | Description |
