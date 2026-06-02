@@ -62,12 +62,23 @@ jobs:
           host: ${{ env.HOST }}
           username: ${{ env.HOST_USERNAME }}
           key: ${{ env.SSH_PRIVATE_KEY }}
+          envs: DOCKER_USERNAME,DOCKER_PASSWORD
           script: |
             set -e
             echo "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
             APP_DIR=/home/ubuntu/bottie
             MCP_ENV=$APP_DIR/.env.mcp
+
+            if [ -z "${DOCKER_USERNAME:-}" ]; then
+              echo "ERROR: DOCKER_USERNAME is empty"
+              exit 1
+            fi
+
+            if [ -z "${DOCKER_PASSWORD:-}" ]; then
+              echo "ERROR: DOCKER_PASSWORD is empty"
+              exit 1
+            fi
 
             if [ ! -f "$MCP_ENV" ]; then
               echo "ERROR: Missing MCP env file: $MCP_ENV"
