@@ -286,7 +286,7 @@ function OnchainBatchStepConfig({
   removeBatchOperation: (stepIndex: number, opIndex: number) => void
   updateBatchOperation: (stepIndex: number, opIndex: number, field: keyof import('../model/types').OnchainOperationForm, value: string) => void
 }) {
-  const operations = step.batchOperations || []
+  const operations = Array.isArray(step.batchOperations) ? step.batchOperations : []
 
   return (
     <div className="space-y-4">

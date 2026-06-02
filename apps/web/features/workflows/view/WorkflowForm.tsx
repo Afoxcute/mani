@@ -274,9 +274,12 @@ function StepsSection({
       </CardHeader>
       <CardContent>
         <form.Subscribe selector={(state) => state.values.steps}>
-          {(steps) => (
+          {(steps) => {
+            const safeSteps = Array.isArray(steps) ? steps : []
+
+            return (
             <div className="space-y-4">
-              {steps.map((step, index) => (
+              {safeSteps.map((step, index) => (
                 <Card key={step.id} className="relative">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -306,7 +309,7 @@ function StepsSection({
                           variant="ghost"
                           size="icon"
                           onClick={() => moveStepDown(index)}
-                          disabled={index === steps.length - 1}
+                          disabled={index === safeSteps.length - 1}
                         >
                           <ChevronDown className="size-4" />
                         </Button>
@@ -315,7 +318,7 @@ function StepsSection({
                           variant="ghost"
                           size="icon"
                           onClick={() => removeStep(index)}
-                          disabled={steps.length <= 1}
+                          disabled={safeSteps.length <= 1}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -328,7 +331,8 @@ function StepsSection({
                 </Card>
               ))}
             </div>
-          )}
+            )
+          }}
         </form.Subscribe>
       </CardContent>
     </Card>

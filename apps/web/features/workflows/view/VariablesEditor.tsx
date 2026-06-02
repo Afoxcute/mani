@@ -20,7 +20,10 @@ export function VariablesEditor() {
 
   return (
     <form.Subscribe selector={(state) => state.values.inputSchema}>
-      {(variables) => (
+      {(variables) => {
+        const safeVariables = Array.isArray(variables) ? variables : []
+
+        return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -35,13 +38,13 @@ export function VariablesEditor() {
             </Button>
           </div>
 
-          {variables.length === 0 ? (
+          {safeVariables.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
               No variables defined. Click &quot;Add Variable&quot; to define workflow inputs.
             </div>
           ) : (
             <div className="space-y-3">
-              {variables.map((variable: WorkflowVariable, index: number) => (
+              {safeVariables.map((variable: WorkflowVariable, index: number) => (
                 <div key={index} className="flex gap-2 items-start p-3 border rounded-lg">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <Input
@@ -123,7 +126,8 @@ export function VariablesEditor() {
             <code className="bg-muted px-1 rounded">$.input.variableName</code>
           </div>
         </div>
-      )}
+        )
+      }}
     </form.Subscribe>
   )
 }

@@ -35,7 +35,9 @@ export function ScopeConfigEditor() {
 
       <form.Field name="allowedDynamicTargets">
         {(field) => {
-          const targets = field.state.value as AllowedDynamicTarget[]
+          const targets = Array.isArray(field.state.value)
+            ? (field.state.value as AllowedDynamicTarget[])
+            : []
 
           return (
             <div className="space-y-4">
