@@ -40,8 +40,7 @@ let serverPrivateKey: KeyObject | null = null
 function normalizePem(pem: string): string {
   return pem
     .trim()
-    .replace(/^"(.*)"$/s, '$1')
-    .replace(/^'(.*)'$/s, '$1')
+    .replace(/^(["'])([\s\S]*)\1$/, '$2')
     .replace(/\\n/g, '\n')
     .replace(/\r\n/g, '\n')
 }
