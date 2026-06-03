@@ -44,17 +44,25 @@ function normalizePem(pem: string): string {
 /**
  * Get the server's RSA public key for client-side encryption.
  * The public key is loaded from SERVER_PUBLIC_KEY env var (PEM format).
+ * If only SERVER_PRIVATE_KEY is configured, derive the public key from it.
  */
 export function getServerPublicKey(): KeyObject {
   if (serverPublicKey) return serverPublicKey
 
   const publicKeyPem = process.env.SERVER_PUBLIC_KEY
-  if (!publicKeyPem) {
-    throw new Error('SERVER_PUBLIC_KEY environment variable is not set')
+  if (publicKeyPem) {
+    serverPublicKey = createPublicKey(normalizePem(publicKeyPem))
+    return serverPublicKey
   }
 
-  serverPublicKey = createPublicKey(normalizePem(publicKeyPem))
-  return serverPublicKey
+  const privateKeyPem = process.env.SERVER_PRIVATE_KEY
+  if (privateKeyPem) {
+    const privateKey = createPrivateKey(normalizePem(privateKeyPem))
+    serverPublicKey = createPublicKey(privateKey)
+    return serverPublicKey
+  }
+
+  throw new Error('SERVER_PUBLIC_KEY and SERVER_PRIVATE_KEY environment variables are not set')
 }
 
 /**
