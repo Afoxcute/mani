@@ -53,8 +53,20 @@ export async function POST(request: NextRequest) {
     code_verifier: codeVerifier,
   } = body
 
+  console.log('[POST /api/oauth/token] Incoming token exchange request:', {
+    grantType,
+    clientId: clientId || null,
+    codePresent: Boolean(code),
+    redirectUri: redirectUri || null,
+    codeVerifierPresent: Boolean(codeVerifier),
+    contentType,
+    userAgent: request.headers.get('user-agent') || null,
+    referer: request.headers.get('referer') || null,
+  })
+
   // Validate grant type
   if (grantType !== 'authorization_code') {
+    console.log('[POST /api/oauth/token] Unsupported grant type:', { grantType })
     return NextResponse.json({
       error: 'unsupported_grant_type',
       error_description: 'Only authorization_code grant type is supported',
@@ -63,24 +75,28 @@ export async function POST(request: NextRequest) {
 
   // Validate required params
   if (!code) {
+    console.log('[POST /api/oauth/token] Missing authorization code')
     return NextResponse.json({
       error: 'invalid_request',
       error_description: 'Missing authorization code',
     }, { status: 400, headers: corsHeaders() })
   }
   if (!clientId) {
+    console.log('[POST /api/oauth/token] Missing client_id')
     return NextResponse.json({
       error: 'invalid_request',
       error_description: 'Missing client_id',
     }, { status: 400, headers: corsHeaders() })
   }
   if (!clientSecret) {
+    console.log('[POST /api/oauth/token] Missing client_secret', { clientId })
     return NextResponse.json({
       error: 'invalid_request',
       error_description: 'Missing client_secret',
     }, { status: 400, headers: corsHeaders() })
   }
   if (!codeVerifier) {
+    console.log('[POST /api/oauth/token] Missing code_verifier', { clientId })
     return NextResponse.json({
       error: 'invalid_request',
       error_description: 'Missing code_verifier (PKCE required)',
@@ -90,6 +106,7 @@ export async function POST(request: NextRequest) {
   // Get and validate client
   const client = await getOAuthClient(clientId)
   if (!client) {
+    console.log('[POST /api/oauth/token] Unknown client:', { clientId })
     return NextResponse.json({
       error: 'invalid_client',
       error_description: 'Unknown client',
@@ -99,6 +116,7 @@ export async function POST(request: NextRequest) {
   // Verify client secret
   const secretValid = await bcrypt.compare(clientSecret, client.secretHash)
   if (!secretValid) {
+    console.log('[POST /api/oauth/token] Invalid client credentials:', { clientId })
     return NextResponse.json({
       error: 'invalid_client',
       error_description: 'Invalid client credentials',
@@ -108,6 +126,7 @@ export async function POST(request: NextRequest) {
   // Get and validate authorization code
   const authCode = await getAndValidateAuthCode(code, clientId)
   if (!authCode) {
+    console.log('[POST /api/oauth/token] Invalid or expired authorization code:', { clientId, codePresent: Boolean(code) })
     return NextResponse.json({
       error: 'invalid_grant',
       error_description: 'Invalid or expired authorization code',
@@ -116,6 +135,11 @@ export async function POST(request: NextRequest) {
 
   // Verify redirect URI matches
   if (redirectUri && authCode.redirectUri !== redirectUri) {
+    console.log('[POST /api/oauth/token] Redirect URI mismatch:', {
+      clientId,
+      redirectUri,
+      storedRedirectUri: authCode.redirectUri,
+    })
     return NextResponse.json({
       error: 'invalid_grant',
       error_description: 'Redirect URI mismatch',
@@ -124,6 +148,7 @@ export async function POST(request: NextRequest) {
 
   // Verify PKCE code challenge
   if (!verifyCodeChallenge(codeVerifier, authCode.codeChallenge)) {
+    console.log('[POST /api/oauth/token] Invalid code_verifier:', { clientId })
     return NextResponse.json({
       error: 'invalid_grant',
       error_description: 'Invalid code_verifier',
@@ -133,6 +158,7 @@ export async function POST(request: NextRequest) {
   // Get the session linked to this authorization
   const sessionId = authCode.sessionConfig.sessionId
   if (!sessionId) {
+    console.log('[POST /api/oauth/token] No session linked to authorization:', { clientId, codePresent: Boolean(code) })
     return NextResponse.json({
       error: 'invalid_grant',
       error_description: 'No session linked to this authorization',
@@ -148,6 +174,11 @@ export async function POST(request: NextRequest) {
   })
 
   if (!session) {
+    console.log('[POST /api/oauth/token] Linked session missing/inactive:', {
+      clientId,
+      userId: authCode.userId,
+      sessionId,
+    })
     return NextResponse.json({
       error: 'invalid_grant',
       error_description: 'Linked session not found or inactive',

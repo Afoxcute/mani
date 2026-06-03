@@ -30,6 +30,9 @@ import type { WorkflowDefinition } from '@/lib/db/schema'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const userAgent = request.headers.get('user-agent')
+    const referer = request.headers.get('referer')
+    const origin = request.headers.get('origin')
 
     const clientId = searchParams.get('client_id')
     const redirectUri = searchParams.get('redirect_uri')
@@ -39,6 +42,19 @@ export async function GET(request: NextRequest) {
     const scopeParam = searchParams.get('scope')
     const state = searchParams.get('state')
     const mcpSlug = searchParams.get('mcp_slug') // Optional MCP server slug
+
+    console.log('[GET /api/oauth/authorize] Incoming authorization request:', {
+      clientId,
+      redirectUriHost: redirectUri ? new URL(redirectUri).host : null,
+      responseType,
+      codeChallengeMethod,
+      scopeCount: scopeParam ? scopeParam.split(' ').filter(Boolean).length : 0,
+      mcpSlug,
+      statePresent: Boolean(state),
+      referer: referer || null,
+      origin: origin || null,
+      userAgent: userAgent || null,
+    })
 
     // Validate required params
     if (!clientId) {
@@ -63,11 +79,19 @@ export async function GET(request: NextRequest) {
     // Get the client
     const client = await getOAuthClient(clientId)
     if (!client) {
+      console.log('[GET /api/oauth/authorize] Invalid client:', { clientId, mcpSlug })
       return NextResponse.json({ error: 'invalid_client' }, { status: 400 })
     }
 
     // Use mcp_slug from URL or fall back to client's stored slug
     const effectiveSlug = mcpSlug || client.mcpSlug
+
+    console.log('[GET /api/oauth/authorize] Client resolved:', {
+      clientId: client.id,
+      clientName: client.name,
+      effectiveSlug,
+      requestedScopes: scopeParam.split(' ').filter(Boolean),
+    })
 
     // Validate redirect URI
     if (!validateRedirectUri(client, redirectUri)) {
@@ -79,6 +103,12 @@ export async function GET(request: NextRequest) {
     const scopeValidation = validateScopes(client, requestedScopes)
 
     if (!scopeValidation.valid) {
+      console.log('[GET /api/oauth/authorize] Invalid scopes requested:', {
+        clientId: client.id,
+        requestedScopes,
+        invalidScopes: scopeValidation.invalidScopes,
+        effectiveSlug,
+      })
       return NextResponse.json({
         error: 'invalid_scope',
         invalid_scopes: scopeValidation.invalidScopes,
@@ -149,6 +179,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Return client info for consent page
+    console.log('[GET /api/oauth/authorize] Authorization consent payload prepared:', {
+      clientId: client.id,
+      effectiveSlug,
+      scopeCount: scopeDetails.length,
+      workflowTargetCount: workflowTargets.length,
+    })
+
     return NextResponse.json({
       client: {
         id: client.id,
@@ -215,6 +252,17 @@ export const POST = withAuth(async (user, request) => {
     mcp_slug: mcpSlug,
   } = body
 
+  console.log('[POST /api/oauth/authorize] Incoming auth code request:', {
+    userId: user.id,
+    walletAddress: user.walletAddress,
+    clientId,
+    redirectUriHost: redirectUri ? new URL(redirectUri).host : null,
+    codeChallengePresent: Boolean(codeChallenge),
+    approvedScopeCount: Array.isArray(approvedScopes) ? approvedScopes.length : 0,
+    sessionIdPresent: Boolean(sessionId),
+    mcpSlug: mcpSlug || null,
+  })
+
   // Validate required params
   if (!clientId || typeof clientId !== 'string') {
     return NextResponse.json({ error: 'missing_client_id' }, { status: 400 })
@@ -235,17 +283,31 @@ export const POST = withAuth(async (user, request) => {
   // Get the client
   const client = await getOAuthClient(clientId)
   if (!client) {
+    console.log('[POST /api/oauth/authorize] Invalid client:', { clientId, userId: user.id, mcpSlug })
     return NextResponse.json({ error: 'invalid_client' }, { status: 400 })
   }
 
   // Validate redirect URI
   if (!validateRedirectUri(client, redirectUri)) {
+    console.log('[POST /api/oauth/authorize] Invalid redirect URI:', {
+      clientId,
+      redirectUri,
+      userId: user.id,
+      mcpSlug,
+    })
     return NextResponse.json({ error: 'invalid_redirect_uri' }, { status: 400 })
   }
 
   // Validate approved scopes are allowed
   const scopeValidation = validateScopes(client, approvedScopes)
   if (!scopeValidation.valid) {
+    console.log('[POST /api/oauth/authorize] Invalid scopes requested:', {
+      clientId,
+      userId: user.id,
+      requestedScopes: approvedScopes,
+      invalidScopes: scopeValidation.invalidScopes,
+      mcpSlug,
+    })
     return NextResponse.json({
       error: 'invalid_scope',
       invalid_scopes: scopeValidation.invalidScopes,
@@ -262,6 +324,12 @@ export const POST = withAuth(async (user, request) => {
   })
 
   if (!session) {
+    console.log('[POST /api/oauth/authorize] Session not found or inactive:', {
+      sessionId,
+      userId: user.id,
+      clientId,
+      mcpSlug,
+    })
     return NextResponse.json({ error: 'session_not_found' }, { status: 404 })
   }
 

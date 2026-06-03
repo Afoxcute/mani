@@ -29,11 +29,13 @@ export interface AuthContext {
  */
 export async function validateBearerToken(authHeader: string | null | undefined): Promise<AuthContext | null> {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('[MCP OAuth] Missing or invalid Authorization header format')
     return null
   }
 
   const token = authHeader.slice(7)
   if (!token) {
+    console.log('[MCP OAuth] Empty bearer token')
     return null
   }
 
@@ -49,6 +51,7 @@ export async function validateBearerToken(authHeader: string | null | undefined)
   })
 
   if (!accessToken) {
+    console.log('[MCP OAuth] Access token not found or expired')
     return null
   }
 
@@ -61,12 +64,19 @@ export async function validateBearerToken(authHeader: string | null | undefined)
   })
 
   if (!session) {
+    console.log('[MCP OAuth] Session not found for access token')
     return null
   }
 
   // Check if session is still valid (time bounds)
   const now = new Date()
   if (now < session.validAfter || now > session.validUntil) {
+    console.log('[MCP OAuth] Session outside validity window', {
+      sessionId: session.sessionId,
+      validAfter: session.validAfter.toISOString(),
+      validUntil: session.validUntil.toISOString(),
+      now: now.toISOString(),
+    })
     return null
   }
 
@@ -76,8 +86,17 @@ export async function validateBearerToken(authHeader: string | null | undefined)
   })
 
   if (!user) {
+    console.log('[MCP OAuth] User not found for access token')
     return null
   }
+
+  console.log('[MCP OAuth] Bearer token validated:', {
+    userId: user.id,
+    walletAddress: user.walletAddress,
+    sessionId: session.sessionId,
+    mcpSlug: accessToken.mcpSlug ?? null,
+    scopeCount: accessToken.scopes?.length ?? 0,
+  })
 
   return {
     user,

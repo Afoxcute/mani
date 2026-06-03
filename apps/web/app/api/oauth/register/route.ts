@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { searchParams } = new URL(request.url)
+    const referer = request.headers.get('referer')
+    const origin = request.headers.get('origin')
+    const userAgent = request.headers.get('user-agent')
 
     // Get mcp_slug from query param (set by virtual auth server metadata)
     let mcpSlug = searchParams.get('mcp_slug')
@@ -51,6 +54,17 @@ export async function POST(request: NextRequest) {
       logo_uri: logoUri,
       scope,
     } = body
+
+    console.log('[POST /api/oauth/register] Incoming registration request:', {
+      mcpSlug,
+      redirectUriCount: Array.isArray(redirectUris) ? redirectUris.length : 0,
+      clientName: clientName || null,
+      clientUri: clientUri || null,
+      scope: scope || null,
+      referer: referer || null,
+      origin: origin || null,
+      userAgent: userAgent || null,
+    })
 
     // Validate redirect_uris
     if (!redirectUris || !Array.isArray(redirectUris) || redirectUris.length === 0) {
