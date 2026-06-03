@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import type { Address } from 'viem'
-import { cronos } from '@reown/appkit/networks'
 import { mantleSepoliaTestnet } from 'viem/chains'
 import { getKnownContract, type KnownContract } from '@/lib/contracts'
 
@@ -22,9 +21,8 @@ export interface UseKnownContractMetadataReturn {
  * Get chain configuration by ID
  */
 function getChainConfig(chainId: number) {
-  if (chainId === cronos.id) return cronos
   if (chainId === mantleSepoliaTestnet.id) return mantleSepoliaTestnet
-  return null
+  return mantleSepoliaTestnet
 }
 
 /**
@@ -69,7 +67,7 @@ export function useKnownContractMetadata(
 
     // Get chain config for explorer URL
     const chain = getChainConfig(chainId)
-    const baseExplorerUrl = chain?.blockExplorers?.default.url ?? 'https://cronoscan.com'
+    const baseExplorerUrl = chain?.blockExplorers?.default.url ?? 'https://explorer.sepolia.mantle.xyz'
     const explorerUrl = `${baseExplorerUrl}/address/${address}`
 
     // Determine display name

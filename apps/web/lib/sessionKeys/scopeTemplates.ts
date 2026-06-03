@@ -1,5 +1,4 @@
 import type { Address, Hex } from 'viem'
-import { cronos } from '@reown/appkit/networks'
 import { getMntConfig } from '@/config/tokens'
 import { getKnownContract } from '@/lib/contracts'
 import type { EIP712Scope, ExecuteScope, SessionScope } from './types'
@@ -19,9 +18,9 @@ export const SELECTORS = {
   permit: '0xd505accf' as Hex,
 } as const
 
-// Default chain ID for the app (Cronos Mainnet)
+// Default chain ID for the app (Mantle Sepolia)
 // Note: Callers should always pass chainId explicitly for correct behavior
-const DEFAULT_CHAIN_ID = cronos.id
+const DEFAULT_CHAIN_ID = 5003
 
 /**
  * Scope template factory functions
