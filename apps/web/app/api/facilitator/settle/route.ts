@@ -13,8 +13,8 @@ import { paymentNonceRepository } from '@/lib/repositories'
  * POST /api/facilitator/settle
  *
  * Settle an x402 payment (execute the transfer on-chain).
- * - For EOA signatures: Forwards to official Cronos facilitator
- * - For smart account signatures: Executes transferWithAuthorization directly
+ * - For EOA signatures: settles on Mantle Sepolia via the router
+ * - For smart account signatures: executes transferWithAuthorization via the router
  *
  * Request body:
  * {
@@ -22,7 +22,7 @@ import { paymentNonceRepository } from '@/lib/repositories'
  *   paymentHeader: string (base64),
  *   paymentRequirements: {
  *     scheme: 'exact',
- *     network: 'cronos-mainnet' | 'cronos-testnet',
+ *     network: 'mantle-sepolia',
  *     payTo: Address,
  *     asset: Address,
  *     maxAmountRequired: string,

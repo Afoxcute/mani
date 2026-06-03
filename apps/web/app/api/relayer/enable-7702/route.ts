@@ -44,7 +44,7 @@ const WALLET_GENERATION_COST = BigInt('500000000000000000')
  *   - chainId: The chain ID
  *   - nonce: The authorization nonce
  *   - r, s, yParity: The signature components
- * - chainId: The chain ID (338 for testnet, 25 for mainnet)
+ * - chainId: The chain ID (5003 for Mantle Sepolia)
  */
 export async function POST(request: NextRequest) {
   try {

@@ -46,7 +46,7 @@ export function getChainFromNetwork(network: NetworkId): SupportedChainId {
 
 /**
  * Parse network string to chain ID
- * Supports: 'cronos-mainnet', 'cronos-testnet', 'mantle-sepolia', 'eip155:25', 'eip155:338', 'eip155:5003'
+ * Supports: 'mantle-sepolia', 'eip155:5003'
  */
 export function parseChainId(network: string): number {
   // Handle network names

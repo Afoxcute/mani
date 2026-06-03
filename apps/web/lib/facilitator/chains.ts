@@ -18,22 +18,6 @@ export const defaultChainId = DEFAULT_CHAIN_ID
  * Uses shared package constants with facilitator-specific extensions
  */
 export const chainConfigs: Record<number, ChainConfig> = {
-  // Cronos Mainnet
-  25: {
-    chainId: 25,
-    name: 'cronos-mainnet',
-    officialFacilitatorUrl: SHARED_CHAIN_CONFIGS[25].officialFacilitatorUrl,
-    usdcAddress: SHARED_CHAIN_CONFIGS[25].mnt.address,
-    rpcUrl: SHARED_CHAIN_CONFIGS[25].rpcUrl,
-  },
-  // Cronos Testnet
-  338: {
-    chainId: 338,
-    name: 'cronos-testnet',
-    officialFacilitatorUrl: SHARED_CHAIN_CONFIGS[338].officialFacilitatorUrl,
-    usdcAddress: SHARED_CHAIN_CONFIGS[338].mnt.address,
-    rpcUrl: SHARED_CHAIN_CONFIGS[338].rpcUrl,
-  },
   5003: {
     chainId: 5003,
     name: 'mantle-sepolia',
@@ -52,7 +36,7 @@ export function getChainConfig(chainId: number): ChainConfig | null {
 
 /**
  * Parse network string to chain ID
- * Supports both "cronos-testnet" format and "eip155:338" format
+ * Supports only "mantle-sepolia" format and "eip155:5003" format
  */
 export function parseChainId(network: string): number {
   return sharedParseChainId(network)

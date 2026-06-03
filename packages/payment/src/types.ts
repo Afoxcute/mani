@@ -3,12 +3,12 @@ import type { Address, Hex } from 'viem'
 /**
  * Supported chain IDs for x402 payments
  */
-export type SupportedChainId = 25 | 338 | 5003
+export type SupportedChainId = 5003
 
 /**
  * Network string identifiers
  */
-export type NetworkId = 'cronos-mainnet' | 'cronos-testnet' | 'mantle-sepolia'
+export type NetworkId = 'mantle-sepolia'
 
 /**
  * Token configuration

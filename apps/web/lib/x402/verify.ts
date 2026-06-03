@@ -46,12 +46,10 @@ export interface PaymentDetails {
 
 /**
  * Parse chain ID from network string
- * Supports both formats: "cronos-testnet" / "cronos-mainnet" / "mantle-sepolia" and "eip155:338" / "eip155:25" / "eip155:5003"
+ * Supports only Mantle Sepolia formats: "mantle-sepolia" and "eip155:5003"
  */
 function parseChainId(network: string): number {
   // Handle network names
-  if (network === 'cronos-testnet') return 338
-  if (network === 'cronos-mainnet') return 25
   if (network === 'mantle-sepolia') return 5003
 
   // Handle CAIP-2 format (eip155:chainId)
@@ -107,12 +105,10 @@ export async function verifyPaymentWithFacilitator(
   }
 
   const chainId = parseChainId(header.network)
-  const network =
-    chainId === 25
-      ? 'cronos-mainnet'
-      : chainId === 5003
-        ? 'mantle-sepolia'
-        : 'cronos-testnet'
+  if (chainId !== 5003) {
+    return { isValid: false, invalidReason: `Unsupported chain ID: ${chainId}` }
+  }
+  const network = 'mantle-sepolia'
 
   const verifyRequest = {
     x402Version: 1,
@@ -168,12 +164,10 @@ export async function settlePayment(
   }
 
   const chainId = parseChainId(header.network)
-  const network =
-    chainId === 25
-      ? 'cronos-mainnet'
-      : chainId === 5003
-        ? 'mantle-sepolia'
-        : 'cronos-testnet'
+  if (chainId !== 5003) {
+    return null
+  }
+  const network = 'mantle-sepolia'
 
   const settlementRequest = {
     x402Version: 1,
@@ -319,15 +313,13 @@ export interface PaymentRequirements {
 
 /**
  * Build the x402 payment requirements for 402 response body.
- * Per Cronos x402 spec, these go in the response body, not headers.
+ * Per x402 spec, these go in the response body, not headers.
  */
 export function buildPaymentRequirements(details: PaymentDetails): PaymentRequirements {
-  const network =
-    details.chainId === 25
-      ? 'cronos-mainnet'
-      : details.chainId === 5003
-        ? 'mantle-sepolia'
-        : 'cronos-testnet'
+  if (details.chainId !== 5003) {
+    throw new Error(`Unsupported chain ID: ${details.chainId}`)
+  }
+  const network = 'mantle-sepolia'
 
   return {
     scheme: 'exact',

@@ -12,7 +12,9 @@ export function buildPaymentHeader(params: {
   chainId: number
 }): PaymentHeader {
   const { message, signature, asset, chainId } = params
-  const network = CHAIN_TO_NETWORK[chainId as keyof typeof CHAIN_TO_NETWORK] ?? ('cronos-testnet' as NetworkId)
+  const network =
+    CHAIN_TO_NETWORK[chainId as keyof typeof CHAIN_TO_NETWORK] ??
+    ('mantle-sepolia' as NetworkId)
 
   return {
     x402Version: 1,

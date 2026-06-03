@@ -5,22 +5,6 @@ import type { ChainConfig, SupportedChainId, NetworkId, TokenConfig } from './ty
  * MNT token configurations by chain
  */
 export const MNT_CONFIG: Record<SupportedChainId, TokenConfig> = {
-  // Cronos Mainnet
-  25: {
-    address: '0xf951eC28187D9E5Ca673Da8FE6757E6f0Be5F77C' as Address,
-    symbol: 'MNT',
-    decimals: 6,
-    domainName: 'Mantle Token',
-    domainVersion: '1',
-  },
-  // Cronos Testnet
-  338: {
-    address: '0xc01efAaF7C5C61bEbFAeb358E1161b537b8bC0e0' as Address,
-    symbol: 'MNT',
-    decimals: 6,
-    domainName: 'Mantle Token',
-    domainVersion: '1',
-  },
   // Mantle Sepolia Testnet
   5003: {
     address: '0x19f5557E23e9914A18239990f6C70D68FDF0deD5' as Address,
@@ -38,20 +22,6 @@ export const USDC_E_CONFIG = MNT_CONFIG
  * Chain configurations
  */
 export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
-  25: {
-    chainId: 25,
-    networkId: 'cronos-mainnet',
-    mnt: MNT_CONFIG[25],
-    rpcUrl: 'https://evm.cronos.org',
-    officialFacilitatorUrl: 'https://facilitator.cronoslabs.org/v2/x402',
-  },
-  338: {
-    chainId: 338,
-    networkId: 'cronos-testnet',
-    mnt: MNT_CONFIG[338],
-    rpcUrl: 'https://evm-t3.cronos.org',
-    officialFacilitatorUrl: 'https://facilitator.cronoslabs.org/v2/x402',
-  },
   5003: {
     chainId: 5003,
     networkId: 'mantle-sepolia',
@@ -65,8 +35,6 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
  * Chain ID to network ID mapping
  */
 export const CHAIN_TO_NETWORK: Record<SupportedChainId, NetworkId> = {
-  25: 'cronos-mainnet',
-  338: 'cronos-testnet',
   5003: 'mantle-sepolia',
 } as const
 
@@ -74,8 +42,6 @@ export const CHAIN_TO_NETWORK: Record<SupportedChainId, NetworkId> = {
  * Network ID to chain ID mapping
  */
 export const NETWORK_TO_CHAIN: Record<NetworkId, SupportedChainId> = {
-  'cronos-mainnet': 25,
-  'cronos-testnet': 338,
   'mantle-sepolia': 5003,
 } as const
 
