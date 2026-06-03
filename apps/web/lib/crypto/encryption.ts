@@ -38,7 +38,36 @@ let serverPrivateKey: KeyObject | null = null
  * Handles escaped newlines (\n as literal string) and converts to actual newlines.
  */
 function normalizePem(pem: string): string {
-  return pem.replace(/\\n/g, '\n')
+  return pem
+    .trim()
+    .replace(/^"(.*)"$/s, '$1')
+    .replace(/^'(.*)'$/s, '$1')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+}
+
+function tryCreatePrivateKey(pem: string): KeyObject {
+  try {
+    return createPrivateKey(pem)
+  } catch (error) {
+    const normalized = normalizePem(pem)
+    if (normalized !== pem) {
+      return createPrivateKey(normalized)
+    }
+    throw error
+  }
+}
+
+function tryCreatePublicKeyFromPem(pem: string): KeyObject {
+  try {
+    return createPublicKey(pem)
+  } catch (error) {
+    const normalized = normalizePem(pem)
+    if (normalized !== pem) {
+      return createPublicKey(normalized)
+    }
+    throw error
+  }
 }
 
 /**
@@ -51,13 +80,13 @@ export function getServerPublicKey(): KeyObject {
 
   const publicKeyPem = process.env.SERVER_PUBLIC_KEY
   if (publicKeyPem) {
-    serverPublicKey = createPublicKey(normalizePem(publicKeyPem))
+    serverPublicKey = tryCreatePublicKeyFromPem(publicKeyPem)
     return serverPublicKey
   }
 
   const privateKeyPem = process.env.SERVER_PRIVATE_KEY
   if (privateKeyPem) {
-    const privateKey = createPrivateKey(normalizePem(privateKeyPem))
+    const privateKey = tryCreatePrivateKey(privateKeyPem)
     serverPublicKey = createPublicKey(privateKey)
     return serverPublicKey
   }
@@ -77,7 +106,7 @@ export function getServerPrivateKey(): KeyObject {
     throw new Error('SERVER_PRIVATE_KEY environment variable is not set')
   }
 
-  serverPrivateKey = createPrivateKey(normalizePem(privateKeyPem))
+  serverPrivateKey = tryCreatePrivateKey(privateKeyPem)
   return serverPrivateKey
 }
 
