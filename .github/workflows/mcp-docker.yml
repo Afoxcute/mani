@@ -143,10 +143,29 @@ jobs:
             sudo docker pull "$MCP_IMAGE"
 
             echo "Stopping old containers..."
-            sudo docker stop mani-web || true
-            sudo docker rm mani-web || true
-            sudo docker stop mani-mcp || true
-            sudo docker rm mani-mcp || true
+            stop_port_containers() {
+              local port="$1"
+              local ids
+              ids=$(sudo docker ps --filter "publish=$port" --format '{{.ID}}')
+              if [ -n "$ids" ]; then
+                echo "Stopping containers publishing port $port: $ids"
+                sudo docker stop $ids || true
+                sudo docker rm $ids || true
+              fi
+            }
+
+            stop_named_container() {
+              local name="$1"
+              if sudo docker ps -a --format '{{.Names}}' | grep -q "^${name}$"; then
+                sudo docker stop "$name" || true
+                sudo docker rm "$name" || true
+              fi
+            }
+
+            stop_port_containers 3000
+            stop_port_containers 3001
+            stop_named_container mani-web
+            stop_named_container mani-mcp
 
             echo "Starting MCP server..."
             sudo docker run -d \
