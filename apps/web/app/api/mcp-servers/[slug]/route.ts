@@ -14,6 +14,8 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { slug } = await params
+    const requestUrl = new URL(request.url)
+    const webOrigin = requestUrl.origin
 
     // Get MCP server with owner info
     const server = await db
@@ -83,9 +85,29 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .where(and(eq(mcpServerWorkflows.mcpServerId, mcpServer.id), eq(mcpServerWorkflows.isEnabled, true)))
       .orderBy(asc(mcpServerWorkflows.displayOrder))
 
-    // Build connection URL (MCP server runs on subdomain)
-    const mcpBaseUrl = process.env.MCP_PUBLIC_URL || 'http://localhost:3001'
-    const connectionUrl = `${mcpBaseUrl}/mcp/${mcpServer.slug}`
+    // Build connection URL. Prefer the actual public MCP URL, then client-visible fallback.
+    const envMcpPublicUrl = process.env.MCP_PUBLIC_URL?.trim() || null
+    const envNextPublicMcpUrl = process.env.NEXT_PUBLIC_MCP_URL?.trim() || null
+    const placeholderPatterns = ['yourdomain.com', 'localhost:3001', '127.0.0.1:3001']
+    const isPlaceholder = (value: string | null) =>
+      !value || placeholderPatterns.some(pattern => value.includes(pattern))
+
+    const mcpBaseUrl =
+      !isPlaceholder(envMcpPublicUrl) ? envMcpPublicUrl
+      : !isPlaceholder(envNextPublicMcpUrl) ? envNextPublicMcpUrl
+      : null
+
+    const resolvedMcpBaseUrl = mcpBaseUrl ?? 'http://localhost:3001'
+    const connectionUrl = `${resolvedMcpBaseUrl}/mcp/${mcpServer.slug}`
+
+    console.log('[GET /api/mcp-servers/[slug]] Connection URL resolved:', {
+      slug,
+      webOrigin,
+      envMcpPublicUrl: envMcpPublicUrl || null,
+      envNextPublicMcpUrl: envNextPublicMcpUrl || null,
+      resolvedMcpBaseUrl: resolvedMcpBaseUrl,
+      connectionUrl,
+    })
 
     return NextResponse.json({
       server: {
