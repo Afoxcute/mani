@@ -86,7 +86,8 @@ jobs:
       - name: Sync source to Ubuntu server
         if: github.event_name == 'push'
         run: |
-          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no ${{ env.HOST_USERNAME }}@${{ env.HOST }} "mkdir -p /home/ubuntu/bottie/repo /home/ubuntu/bottie/config"
+          SSH_CMD="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
+          $SSH_CMD ${{ env.HOST_USERNAME }}@${{ env.HOST }} "mkdir -p /home/ubuntu/bottie/repo /home/ubuntu/bottie/config"
           rsync -az --delete \
             --exclude '.env' \
             --exclude '.env.*' \
@@ -104,7 +105,7 @@ jobs:
             --exclude '**/.turbo/' \
             --exclude 'coverage/' \
             --exclude '**/coverage/' \
-            --rsh="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no" \
+            --rsh="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes" \
             ./ \
             ${{ env.HOST_USERNAME }}@${{ env.HOST }}:/home/ubuntu/bottie/repo/
 
@@ -113,20 +114,21 @@ jobs:
         run: |
           set -euo pipefail
           echo "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "mkdir -p /home/ubuntu/bottie/config /home/ubuntu/bottie/repo"
-          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "chmod +x /home/ubuntu/bottie/repo/scripts/remote-deploy.sh && nohup /home/ubuntu/bottie/repo/scripts/remote-deploy.sh >/dev/null 2>&1 & echo \$! > /home/ubuntu/bottie/config/deploy.pid"
+          SSH_CMD="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
+          $SSH_CMD "${HOST_USERNAME}@${HOST}" "mkdir -p /home/ubuntu/bottie/config /home/ubuntu/bottie/repo"
+          $SSH_CMD "${HOST_USERNAME}@${HOST}" "chmod +x /home/ubuntu/bottie/repo/scripts/remote-deploy.sh && nohup /home/ubuntu/bottie/repo/scripts/remote-deploy.sh >/dev/null 2>&1 & echo \$! > /home/ubuntu/bottie/config/deploy.pid"
 
           echo "Waiting for remote deployment to finish..."
           status=""
           for i in $(seq 1 240); do
-            status="$(ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "cat /home/ubuntu/bottie/config/deploy.status 2>/dev/null || true")"
+            status="$($SSH_CMD "${HOST_USERNAME}@${HOST}" "cat /home/ubuntu/bottie/config/deploy.status 2>/dev/null || true")"
             if [ "$status" = "success" ]; then
               echo "Remote deployment completed successfully."
               break
             fi
             if [ "$status" = "failed" ]; then
               echo "Remote deployment failed. Last log lines:"
-              ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "tail -n 120 /home/ubuntu/bottie/config/deploy.log || true"
+              $SSH_CMD "${HOST_USERNAME}@${HOST}" "tail -n 120 /home/ubuntu/bottie/config/deploy.log || true"
               exit 1
             fi
             sleep 10
@@ -134,18 +136,19 @@ jobs:
 
           if [ "$status" != "success" ]; then
             echo "Remote deployment timed out. Last log lines:"
-            ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "tail -n 120 /home/ubuntu/bottie/config/deploy.log || true"
+            $SSH_CMD "${HOST_USERNAME}@${HOST}" "tail -n 120 /home/ubuntu/bottie/config/deploy.log || true"
             exit 1
           fi
 
           echo "Deployment logs:"
-          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "tail -n 60 /home/ubuntu/bottie/config/deploy.log || true"
+          $SSH_CMD "${HOST_USERNAME}@${HOST}" "tail -n 60 /home/ubuntu/bottie/config/deploy.log || true"
 
       - name: Post-deploy verification
         if: github.event_name == 'push' && success()
         run: |
           set -euo pipefail
-          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" 'bash -s' <<'REMOTE'
+          SSH_CMD="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
+          $SSH_CMD "${HOST_USERNAME}@${HOST}" 'bash -s' <<'REMOTE'
           set -e
           echo "MCP container status:"
           sudo docker inspect mani-mcp --format='Status: {{.State.Status}} | Started At: {{.State.StartedAt}}' || true
