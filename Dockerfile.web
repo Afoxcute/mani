@@ -1,11 +1,22 @@
 # syntax=docker/dockerfile:1
+# bookworm-slim (glibc): Solana deps use bigint-buffer; Alpine often logs "Failed to load bindings, pure JS will be used".
 
-FROM node:22-alpine AS base
+FROM node:22-bookworm-slim AS base
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /app
 
 FROM base AS builder
-
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages ./packages
+COPY apps/web ./apps/web
+RUN pnpm install --frozen-lockfile
+ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_REOWN_PROJECT_ID
 ARG NEXT_PUBLIC_X402_FACILITATOR_URL
 ARG NEXT_PUBLIC_APP_URL
@@ -13,7 +24,6 @@ ARG NEXT_PUBLIC_MCP_URL
 ARG NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003
 ARG NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS
 ARG NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS
-
 ENV NEXT_PUBLIC_REOWN_PROJECT_ID=${NEXT_PUBLIC_REOWN_PROJECT_ID}
 ENV NEXT_PUBLIC_X402_FACILITATOR_URL=${NEXT_PUBLIC_X402_FACILITATOR_URL}
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
@@ -21,24 +31,21 @@ ENV NEXT_PUBLIC_MCP_URL=${NEXT_PUBLIC_MCP_URL}
 ENV NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=${NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID}
 ENV NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS=${NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS}
 ENV NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS=${NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS}
-
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY packages ./packages
-COPY apps/web ./apps/web
-
-RUN pnpm install --frozen-lockfile
-RUN pnpm build:packages && pnpm --filter web build
+RUN pnpm --filter '@x402/*' build && pnpm --filter web build
 
 FROM base AS runner
 ENV NODE_ENV=production
-WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs nextjs
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/web ./apps/web
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
+USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-
-CMD ["pnpm", "--filter", "web", "start"]
+ENV HOSTNAME=0.0.0.0
+WORKDIR /app
+CMD ["node", "apps/web/server.js"]

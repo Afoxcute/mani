@@ -75,15 +75,13 @@ docker run --rm -p 3001:3001 \
 The workflow at [/.github/workflows/mcp-docker.yml](/C:/Users/XPS/mani/.github/workflows/mcp-docker.yml) now deploys both the web app and the MCP server:
 
 - builds `Dockerfile.web` and `Dockerfile.mcp`
-- pushes the images to Docker Hub
 - SSHes into the Ubuntu server
-- pulls the latest web and MCP images
+- syncs the repo into `/home/ubuntu/bottie/repo`
+- builds both images on the server with Docker
 - restarts both containers with Docker
 
 Required GitHub secrets:
 
-- `DOCKER_USERNAME_PROD`
-- `DOCKER_HUB_ACCESS_TOKEN_PROD`
 - `SSH_HOST_TEMP`
 - `SSH_USERNAME_TEMP`
 - `SSH_PRIVATE_TEMP`

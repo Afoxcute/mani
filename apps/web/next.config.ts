@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // Set correct workspace root to avoid lockfile detection issues
   outputFileTracingRoot: path.join(__dirname, "../../"),
   // Transpile packages that need it
