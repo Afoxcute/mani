@@ -9,12 +9,13 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   HOST: ${{ secrets.SSH_HOST_TEMP }}
   HOST_USERNAME: ${{ secrets.SSH_USERNAME_TEMP }}
   SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_TEMP }}
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME_PROD }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN_PROD }}
   WEB_REOWN_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_REOWN_PROJECT_ID_PROD || 'placeholder-reown-project-id' }}
   WEB_FACILITATOR_URL: ${{ secrets.NEXT_PUBLIC_X402_FACILITATOR_URL_PROD || 'http://localhost:3002' }}
   WEB_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL_PROD || 'http://localhost:3000' }}
@@ -53,19 +54,19 @@ jobs:
             -t mani-mcp:pr \
             .
 
-      - name: Login to GitHub Container Registry
+      - name: Login to Docker Hub
         if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.io
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
 
       - name: Build web image
         if: github.event_name == 'push'
         run: |
-          OWNER="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          WEB_IMAGE="ghcr.io/$OWNER/mani-web:latest"
+          OWNER="$(printf '%s' "${{ env.DOCKER_USERNAME }}" | tr '[:upper:]' '[:lower:]')"
+          WEB_IMAGE="docker.io/$OWNER/mani-web:latest"
           docker build \
             -f Dockerfile.web \
             --build-arg NEXT_PUBLIC_REOWN_PROJECT_ID="${{ env.WEB_REOWN_PROJECT_ID }}" \
@@ -81,19 +82,19 @@ jobs:
       - name: Build MCP image
         if: github.event_name == 'push'
         run: |
-          OWNER="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          MCP_IMAGE="ghcr.io/$OWNER/mani-mcp:latest"
+          OWNER="$(printf '%s' "${{ env.DOCKER_USERNAME }}" | tr '[:upper:]' '[:lower:]')"
+          MCP_IMAGE="docker.io/$OWNER/mani-mcp:latest"
           docker build \
             -f Dockerfile.mcp \
             -t "$MCP_IMAGE" \
             .
 
-      - name: Push images to GHCR
+      - name: Push images to Docker Hub
         if: github.event_name == 'push'
         run: |
-          OWNER="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          WEB_IMAGE="ghcr.io/$OWNER/mani-web:latest"
-          MCP_IMAGE="ghcr.io/$OWNER/mani-mcp:latest"
+          OWNER="$(printf '%s' "${{ env.DOCKER_USERNAME }}" | tr '[:upper:]' '[:lower:]')"
+          WEB_IMAGE="docker.io/$OWNER/mani-web:latest"
+          MCP_IMAGE="docker.io/$OWNER/mani-mcp:latest"
           docker push "$WEB_IMAGE"
           docker push "$MCP_IMAGE"
 
@@ -110,11 +111,11 @@ jobs:
           echo "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
           SSH_OPTS="-i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
-          OWNER="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          WEB_IMAGE="ghcr.io/$OWNER/mani-web:latest"
-          MCP_IMAGE="ghcr.io/$OWNER/mani-mcp:latest"
+          OWNER="$(printf '%s' "${{ env.DOCKER_USERNAME }}" | tr '[:upper:]' '[:lower:]')"
+          WEB_IMAGE="docker.io/$OWNER/mani-web:latest"
+          MCP_IMAGE="docker.io/$OWNER/mani-mcp:latest"
 
-          ssh $SSH_OPTS "${HOST_USERNAME}@${HOST}" "WEB_IMAGE='$WEB_IMAGE' MCP_IMAGE='$MCP_IMAGE' bash -se" <<'REMOTE'
+          ssh $SSH_OPTS "${HOST_USERNAME}@${HOST}" "WEB_IMAGE='$WEB_IMAGE' MCP_IMAGE='$MCP_IMAGE' DOCKER_USERNAME='${{ env.DOCKER_USERNAME }}' DOCKER_PASSWORD='${{ env.DOCKER_PASSWORD }}' bash -se" <<'REMOTE'
           set -euo pipefail
 
           APP_DIR=/home/ubuntu/bottie
@@ -148,7 +149,10 @@ jobs:
           log "Creating Docker network if missing..."
           sudo docker network create mani-net >/dev/null 2>&1 || true
 
-          log "Pulling images from GHCR..."
+          log "Logging in to Docker Hub on the server..."
+          printf '%s\n' "$DOCKER_PASSWORD" | sudo docker login --username "$DOCKER_USERNAME" --password-stdin docker.io
+
+          log "Pulling images from Docker Hub..."
           sudo docker pull "$WEB_IMAGE"
           sudo docker pull "$MCP_IMAGE"
 
