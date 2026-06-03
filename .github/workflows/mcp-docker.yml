@@ -77,6 +77,18 @@ jobs:
             -t mani-mcp:ci \
             .
 
+      - name: Sync source to Ubuntu server
+        if: github.event_name == 'push'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.HOST_USERNAME }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          source: "."
+          target: /home/ubuntu/bottie
+          overwrite: true
+          strip_components: 0
+
       - name: Deploy to Ubuntu server
         if: github.event_name == 'push'
         uses: appleboy/ssh-action@v1.2.0
@@ -116,15 +128,6 @@ jobs:
 
             echo "Docker disk usage after cleanup:"
             sudo docker system df || true
-
-            echo "Preparing repository on the server..."
-            if [ ! -d "$APP_DIR/.git" ]; then
-              echo "ERROR: Expected git repository at $APP_DIR"
-              exit 1
-            fi
-
-            git -C "$APP_DIR" fetch --all --prune
-            git -C "$APP_DIR" reset --hard origin/main
 
             echo "Loading web env for build-time public variables..."
             set -a
