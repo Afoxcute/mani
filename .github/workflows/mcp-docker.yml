@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   HOST: ${{ secrets.SSH_HOST_TEMP }}
   HOST_USERNAME: ${{ secrets.SSH_USERNAME_TEMP }}
@@ -16,7 +20,7 @@ env:
   WEB_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL_PROD || 'http://localhost:3000' }}
   WEB_MCP_URL: ${{ secrets.NEXT_PUBLIC_MCP_URL_PROD || 'http://localhost:3001' }}
   WEB_AGENT_DELEGATOR_ADDRESS: ${{ secrets.NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS_PROD || '0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1' }}
-  WEB_ACTION_ROUTER_ADDRESS: ${{ secrets.NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS_PROD || '0x288dA822f469B9e11818dB9fA6EC74e57230342a' }}
+  WEB_ACTION_ROUTER_ADDRESS: ${{ secrets.NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS_PROD || '0x288dA822f469B9e11818dB9Fa6EC74e57230342a' }}
 
 jobs:
   build-and-deploy:
@@ -49,9 +53,19 @@ jobs:
             -t mani-mcp:pr \
             .
 
-      - name: Build web image (push validation)
+      - name: Login to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build web image
         if: github.event_name == 'push'
         run: |
+          OWNER="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          WEB_IMAGE="ghcr.io/$OWNER/mani-web:latest"
           docker build \
             -f Dockerfile.web \
             --build-arg NEXT_PUBLIC_REOWN_PROJECT_ID="${{ env.WEB_REOWN_PROJECT_ID }}" \
@@ -61,16 +75,27 @@ jobs:
             --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003 \
             --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS="${{ env.WEB_AGENT_DELEGATOR_ADDRESS }}" \
             --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS="${{ env.WEB_ACTION_ROUTER_ADDRESS }}" \
-            -t mani-web:latest \
+            -t "$WEB_IMAGE" \
             .
 
-      - name: Build MCP image (push validation)
+      - name: Build MCP image
         if: github.event_name == 'push'
         run: |
+          OWNER="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          MCP_IMAGE="ghcr.io/$OWNER/mani-mcp:latest"
           docker build \
             -f Dockerfile.mcp \
-            -t mani-mcp:latest \
+            -t "$MCP_IMAGE" \
             .
+
+      - name: Push images to GHCR
+        if: github.event_name == 'push'
+        run: |
+          OWNER="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          WEB_IMAGE="ghcr.io/$OWNER/mani-web:latest"
+          MCP_IMAGE="ghcr.io/$OWNER/mani-mcp:latest"
+          docker push "$WEB_IMAGE"
+          docker push "$MCP_IMAGE"
 
       - name: Prepare SSH key for deploy
         if: github.event_name == 'push'
@@ -78,19 +103,18 @@ jobs:
           install -m 600 /dev/null /tmp/mani_deploy_key
           printf '%s\n' "${{ env.SSH_PRIVATE_KEY }}" > /tmp/mani_deploy_key
 
-      - name: Load images and deploy to Ubuntu server
+      - name: Deploy to Ubuntu server
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
           echo "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
           SSH_OPTS="-i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
+          OWNER="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          WEB_IMAGE="ghcr.io/$OWNER/mani-web:latest"
+          MCP_IMAGE="ghcr.io/$OWNER/mani-mcp:latest"
 
-          echo "Loading Docker images onto the server..."
-          docker save mani-web:latest mani-mcp:latest | ssh $SSH_OPTS "${HOST_USERNAME}@${HOST}" 'sudo docker load'
-
-          echo "Running inline remote deployment..."
-          cat <<'REMOTE' | ssh $SSH_OPTS "${HOST_USERNAME}@${HOST}" 'bash -se'
+          ssh $SSH_OPTS "${HOST_USERNAME}@${HOST}" "WEB_IMAGE='$WEB_IMAGE' MCP_IMAGE='$MCP_IMAGE' bash -se" <<'REMOTE'
           set -euo pipefail
 
           APP_DIR=/home/ubuntu/bottie
@@ -124,6 +148,10 @@ jobs:
           log "Creating Docker network if missing..."
           sudo docker network create mani-net >/dev/null 2>&1 || true
 
+          log "Pulling images from GHCR..."
+          sudo docker pull "$WEB_IMAGE"
+          sudo docker pull "$MCP_IMAGE"
+
           log "Stopping old containers..."
           stop_port_containers() {
             local port="$1"
@@ -156,7 +184,7 @@ jobs:
             --network mani-net \
             -p 3001:3001 \
             --env-file "$MCP_ENV" \
-            mani-mcp:latest
+            "$MCP_IMAGE"
 
           log "Starting web app..."
           sudo docker run -d \
@@ -165,7 +193,7 @@ jobs:
             --network mani-net \
             -p 3000:3000 \
             --env-file "$WEB_ENV" \
-            mani-web:latest
+            "$WEB_IMAGE"
 
           log "Verifying deployment..."
           sleep 10
