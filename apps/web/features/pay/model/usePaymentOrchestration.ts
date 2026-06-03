@@ -2,11 +2,8 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import type { Address } from 'viem'
-import { useConnection } from 'wagmi'
-import { cronos } from '@reown/appkit/networks'
 import { mantleSepoliaTestnet } from 'viem/chains'
 import { useUser } from '@/context/user'
-import { defaultChainId } from '@/config/tokens'
 import { usePayment, useSessionPayment } from './index'
 import { useSmartAccount, type SmartAccountStatus } from '@/features/smartAccount/model/useSmartAccount'
 import { useSessions, type SessionInfo } from '@/features/sessionKeys/model'
@@ -47,7 +44,7 @@ export interface UsePaymentOrchestrationReturn {
   isLoadingSessions: boolean
 
   // Chain info
-  chain: typeof cronos | typeof mantleSepoliaTestnet
+  chain: typeof mantleSepoliaTestnet
   explorerUrl: string
 
   // Processing state
@@ -70,8 +67,6 @@ export function usePaymentOrchestration(
   const { recipient, initialAmountUsd, initialAmountSmallestUnit } = params
 
   const { session } = useUser()
-  const { chainId } = useConnection()
-
   // Smart account and session state
   const {
     isEnabled: isSmartAccountEnabled,
@@ -104,9 +99,8 @@ export function usePaymentOrchestration(
 
   // Derived state
   const isAuthenticated = session?.isAuthenticated ?? false
-  const currentChainId = chainId || defaultChainId
   const isProcessing = payment.status === 'signing' || payment.status === 'submitting'
-  const chain = currentChainId === cronos.id ? cronos : mantleSepoliaTestnet
+  const chain = mantleSepoliaTestnet
   const explorerUrl = chain.blockExplorers?.default.url ?? 'https://explorer.sepolia.mantle.xyz'
   const paymentMethod: PaymentMethod = useSession && activeSession ? 'session' : 'manual'
 

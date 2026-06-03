@@ -50,7 +50,7 @@ export function useSessionPayment(params: UseSessionPaymentParams): UseSessionPa
   const { sessionId, recipient, initialAmountUsd } = params
 
   const { session } = useUser()
-  const { address, chainId } = useConnection()
+  const { address } = useConnection()
 
   // State
   const [status, setStatus] = useState<PaymentStatus>('idle')
@@ -59,8 +59,8 @@ export function useSessionPayment(params: UseSessionPaymentParams): UseSessionPa
   const [amount, setAmount] = useState(initialAmountUsd.toString())
 
   // Derived values
-  const currentChainId = chainId || defaultChainId
-  const mntConfig = getMntConfig(currentChainId)
+  const currentChainId = defaultChainId
+  const mntConfig = getMntConfig(defaultChainId)
   const isAuthenticated = session?.isAuthenticated ?? false
 
   // Parse and validate amount

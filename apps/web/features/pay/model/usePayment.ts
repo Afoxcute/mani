@@ -25,7 +25,7 @@ export function usePayment(params: PaymentParams): UsePaymentReturn {
   const { recipient, initialAmountUsd } = params
 
   const { session } = useUser()
-  const { address, chainId } = useConnection()
+  const { address } = useConnection()
   const { mutateAsync: signTypedData } = useSignTypedData()
 
   // State
@@ -35,8 +35,8 @@ export function usePayment(params: PaymentParams): UsePaymentReturn {
   const [amount, setAmount] = useState(initialAmountUsd.toString())
 
   // Derived values
-  const currentChainId = chainId || defaultChainId
-  const mntConfig = getMntConfig(currentChainId)
+  const currentChainId = defaultChainId
+  const mntConfig = getMntConfig(defaultChainId)
   const isAuthenticated = session?.isAuthenticated ?? false
 
   // Parse and validate amount

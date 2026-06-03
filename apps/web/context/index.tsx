@@ -14,7 +14,6 @@ import {
 } from '@reown/appkit-siwx'
 
 
-import { cronos } from '@reown/appkit/networks'
 import { mantleSepoliaTestnet } from 'viem/chains'
 import { projectId, wagmiAdapter } from '@/config'
 import { UserProvider } from './user'
@@ -141,13 +140,13 @@ const siwx = new DefaultSIWX({
 
 // Initialize AppKit
 if (projectId) {
-  createAppKit({
-    adapters: [wagmiAdapter],
-    projectId,
-    networks: [mantleSepoliaTestnet, cronos],
-    defaultNetwork: mantleSepoliaTestnet,
-    metadata,
-    siwx,
+    createAppKit({
+      adapters: [wagmiAdapter],
+      projectId,
+      networks: [mantleSepoliaTestnet],
+      defaultNetwork: mantleSepoliaTestnet,
+      metadata,
+      siwx,
     features: {
       analytics: true,
     },

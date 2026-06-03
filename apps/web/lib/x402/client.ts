@@ -4,6 +4,7 @@ import {
   MNT_CONFIG,
   type SupportedChainId,
 } from '@x402/payment'
+import { defaultChainId } from '@/config/tokens'
 
 /**
  * x402 Client-side Payment Utilities
@@ -29,14 +30,11 @@ export {
  * Uses MNT domain name/version with the provided asset address
  */
 export function buildMntDomain(asset: Address, chainId: number) {
-  const config = MNT_CONFIG[chainId as SupportedChainId]
-  if (!config) {
-    throw new Error(`Unsupported chain ID: ${chainId}`)
-  }
+  const config = MNT_CONFIG[chainId as SupportedChainId] ?? MNT_CONFIG[defaultChainId]
   return {
     name: config.domainName,
     version: config.domainVersion,
-    chainId,
+    chainId: chainId in MNT_CONFIG ? chainId : defaultChainId,
     verifyingContract: asset,
   } as const
 }
