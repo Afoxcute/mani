@@ -8,5 +8,4 @@ node_modules
 **/.turbo
 .env
 .env.*
-apps/web
 hardhat

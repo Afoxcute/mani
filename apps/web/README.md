@@ -52,6 +52,7 @@ Required variables:
 | `SERVER_PUBLIC_KEY` | RSA public key for header encryption |
 | `SERVER_PRIVATE_KEY` | RSA private key for header encryption |
 | `MCP_PUBLIC_URL` | Public URL of the MCP server |
+| `NEXT_PUBLIC_MCP_URL` | Public MCP server URL used by the client |
 | `NEXT_PUBLIC_X402_FACILITATOR_URL` | Public URL of the facilitator service |
 
 Recommended production values:
@@ -74,6 +75,36 @@ pnpm dev
 pnpm build
 pnpm start
 ```
+
+## Docker
+
+Build from the repository root:
+
+```bash
+docker build -f Dockerfile.web -t mani-web .
+```
+
+The Docker image accepts the public build-time values used by the client bundle:
+
+- `NEXT_PUBLIC_REOWN_PROJECT_ID`
+- `NEXT_PUBLIC_X402_FACILITATOR_URL`
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_MCP_URL`
+- `NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID`
+- `NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS`
+- `NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS`
+
+At runtime, the container still needs the standard server env file values:
+
+- `DATABASE_URL`
+- `REDIS_URL`
+- `SESSION_SECRET`
+- `SERVER_PUBLIC_KEY`
+- `SERVER_PRIVATE_KEY`
+- `MCP_PUBLIC_URL`
+- `NEXT_PUBLIC_X402_FACILITATOR_URL`
+
+The combined GitHub Actions workflow now deploys the web app as `mani-web` on port `3000`.
 
 ## Database commands
 
@@ -99,4 +130,3 @@ components/    Shared UI components
 - Include the deployed contract addresses in your DoraHacks submission.
 - Include a demo video link in the submission.
 - The repo already documents the on-chain deployment and architecture.
-

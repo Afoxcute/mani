@@ -1,4 +1,4 @@
-name: Build and Deploy Bonzo MCP
+name: Build and Deploy Mani Web + MCP
 
 on:
   push:
@@ -13,7 +13,14 @@ env:
   HOST: ${{ secrets.SSH_HOST_TEMP }}
   HOST_USERNAME: ${{ secrets.SSH_USERNAME_TEMP }}
   SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_TEMP }}
-  MCP_IMAGE: ${{ secrets.DOCKER_USERNAME_PROD }}/bonzo-mcp:latest
+  WEB_IMAGE: ${{ secrets.DOCKER_USERNAME_PROD }}/mani-web:latest
+  MCP_IMAGE: ${{ secrets.DOCKER_USERNAME_PROD }}/mani-mcp:latest
+  WEB_REOWN_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_REOWN_PROJECT_ID_PROD || 'placeholder-reown-project-id' }}
+  WEB_FACILITATOR_URL: ${{ secrets.NEXT_PUBLIC_X402_FACILITATOR_URL_PROD || 'http://localhost:3002' }}
+  WEB_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL_PROD || 'http://localhost:3000' }}
+  WEB_MCP_URL: ${{ secrets.NEXT_PUBLIC_MCP_URL_PROD || 'http://localhost:3001' }}
+  WEB_AGENT_DELEGATOR_ADDRESS: ${{ secrets.NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS_PROD || '0x3A9AB777B438d78059D1735c3ec30e6c94Ea35a1' }}
+  WEB_ACTION_ROUTER_ADDRESS: ${{ secrets.NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS_PROD || '0x288dA822f469B9e11818dB9fA6EC74e57230342a' }}
 
 jobs:
   build-and-deploy:
@@ -33,6 +40,25 @@ jobs:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_PASSWORD }}
 
+      - name: Build web image (PR validation)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          push: false
+          tags: mani-web:pr
+          build-args: |
+            NEXT_PUBLIC_REOWN_PROJECT_ID=${{ env.WEB_REOWN_PROJECT_ID }}
+            NEXT_PUBLIC_X402_FACILITATOR_URL=${{ env.WEB_FACILITATOR_URL }}
+            NEXT_PUBLIC_APP_URL=${{ env.WEB_APP_URL }}
+            NEXT_PUBLIC_MCP_URL=${{ env.WEB_MCP_URL }}
+            NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003
+            NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS=${{ env.WEB_AGENT_DELEGATOR_ADDRESS }}
+            NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS=${{ env.WEB_ACTION_ROUTER_ADDRESS }}
+          cache-from: type=gha,scope=mani-web
+          cache-to: type=gha,mode=max,scope=mani-web
+
       - name: Build MCP image (PR validation)
         if: github.event_name == 'pull_request'
         uses: docker/build-push-action@v6
@@ -40,9 +66,28 @@ jobs:
           context: .
           file: Dockerfile.mcp
           push: false
-          tags: bonzo-mcp:pr
-          cache-from: type=gha,scope=bonzo-mcp
-          cache-to: type=gha,mode=max,scope=bonzo-mcp
+          tags: mani-mcp:pr
+          cache-from: type=gha,scope=mani-mcp
+          cache-to: type=gha,mode=max,scope=mani-mcp
+
+      - name: Build and push web image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          push: true
+          tags: ${{ env.WEB_IMAGE }}
+          build-args: |
+            NEXT_PUBLIC_REOWN_PROJECT_ID=${{ env.WEB_REOWN_PROJECT_ID }}
+            NEXT_PUBLIC_X402_FACILITATOR_URL=${{ env.WEB_FACILITATOR_URL }}
+            NEXT_PUBLIC_APP_URL=${{ env.WEB_APP_URL }}
+            NEXT_PUBLIC_MCP_URL=${{ env.WEB_MCP_URL }}
+            NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003
+            NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS=${{ env.WEB_AGENT_DELEGATOR_ADDRESS }}
+            NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS=${{ env.WEB_ACTION_ROUTER_ADDRESS }}
+          cache-from: type=gha,scope=mani-web
+          cache-to: type=gha,mode=max,scope=mani-web
 
       - name: Build and push MCP image
         if: github.event_name == 'push'
@@ -52,8 +97,8 @@ jobs:
           file: Dockerfile.mcp
           push: true
           tags: ${{ env.MCP_IMAGE }}
-          cache-from: type=gha,scope=bonzo-mcp
-          cache-to: type=gha,mode=max,scope=bonzo-mcp
+          cache-from: type=gha,scope=mani-mcp
+          cache-to: type=gha,mode=max,scope=mani-mcp
 
       - name: Deploy to Ubuntu server
         if: github.event_name == 'push'
@@ -62,12 +107,13 @@ jobs:
           host: ${{ env.HOST }}
           username: ${{ env.HOST_USERNAME }}
           key: ${{ env.SSH_PRIVATE_KEY }}
-          envs: DOCKER_USERNAME,DOCKER_PASSWORD
+          envs: DOCKER_USERNAME,DOCKER_PASSWORD,WEB_IMAGE,MCP_IMAGE
           script: |
-            set -e
+            set -euo pipefail
             echo "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
             APP_DIR=/home/ubuntu/bottie
+            WEB_ENV=$APP_DIR/.env.web
             MCP_ENV=$APP_DIR/.env.mcp
 
             if [ -z "${DOCKER_USERNAME:-}" ]; then
@@ -80,45 +126,72 @@ jobs:
               exit 1
             fi
 
+            if [ ! -f "$WEB_ENV" ]; then
+              echo "ERROR: Missing web env file: $WEB_ENV"
+              exit 1
+            fi
+
             if [ ! -f "$MCP_ENV" ]; then
               echo "ERROR: Missing MCP env file: $MCP_ENV"
               exit 1
             fi
 
             echo "Creating Docker network if missing..."
-            sudo docker network create bottie-net >/dev/null 2>&1 || true
+            sudo docker network create mani-net >/dev/null 2>&1 || true
 
             echo "Logging into Docker Hub on the server..."
             echo "$DOCKER_PASSWORD" | sudo docker login -u "$DOCKER_USERNAME" --password-stdin
 
-            echo "Stopping old container..."
-            sudo docker stop bottie-mcp-server || true
-            sudo docker rm bottie-mcp-server || true
+            echo "Pulling latest web image..."
+            sudo docker pull "$WEB_IMAGE"
 
-            echo "Pulling latest image..."
-            sudo docker pull ${{ env.MCP_IMAGE }}
+            echo "Pulling latest MCP image..."
+            sudo docker pull "$MCP_IMAGE"
+
+            echo "Stopping old containers..."
+            sudo docker stop mani-web || true
+            sudo docker rm mani-web || true
+            sudo docker stop mani-mcp || true
+            sudo docker rm mani-mcp || true
 
             echo "Starting MCP server..."
             sudo docker run -d \
-              --name bottie-mcp-server \
+              --name mani-mcp \
               --restart unless-stopped \
-              --network bottie-net \
+              --network mani-net \
               -p 3001:3001 \
               --env-file "$MCP_ENV" \
-              ${{ env.MCP_IMAGE }}
+              "$MCP_IMAGE"
+
+            echo "Starting web app..."
+            sudo docker run -d \
+              --name mani-web \
+              --restart unless-stopped \
+              --network mani-net \
+              -p 3000:3000 \
+              --env-file "$WEB_ENV" \
+              "$WEB_IMAGE"
 
             echo "Verifying deployment..."
             sleep 10
 
-            if ! sudo docker ps --format '{{.Names}}' | grep -q '^bottie-mcp-server$'; then
-              echo "ERROR: MCP container failed to start"
-              sudo docker logs bottie-mcp-server || true
+            if ! sudo docker ps --format '{{.Names}}' | grep -q '^mani-mcp$'; then
+              echo "ERROR: mani-mcp container failed to start"
+              sudo docker logs mani-mcp || true
               exit 1
             fi
 
-            echo "OK: MCP container is running"
+            if ! sudo docker ps --format '{{.Names}}' | grep -q '^mani-web$'; then
+              echo "ERROR: mani-web container failed to start"
+              sudo docker logs mani-web || true
+              exit 1
+            fi
+
+            echo "OK: both containers are running"
             echo "MCP logs:"
-            sudo docker logs --tail 30 bottie-mcp-server
+            sudo docker logs --tail 30 mani-mcp
+            echo "Web logs:"
+            sudo docker logs --tail 30 mani-web
             echo "Deployment completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
       - name: Post-deploy verification
@@ -129,11 +202,10 @@ jobs:
           username: ${{ env.HOST_USERNAME }}
           key: ${{ env.SSH_PRIVATE_KEY }}
           script: |
-            if sudo docker ps --format '{{.Names}}' | grep -q '^bottie-mcp-server$'; then
-              echo "MCP container status:"
-              sudo docker inspect bottie-mcp-server --format='Status: {{.State.Status}} | Started At: {{.State.StartedAt}}'
-              sudo docker port bottie-mcp-server
-            else
-              echo "ERROR: bottie-mcp-server is not running"
-              exit 1
-            fi
+            set -e
+            echo "MCP container status:"
+            sudo docker inspect mani-mcp --format='Status: {{.State.Status}} | Started At: {{.State.StartedAt}}' || true
+            sudo docker port mani-mcp || true
+            echo "Web container status:"
+            sudo docker inspect mani-web --format='Status: {{.State.Status}} | Started At: {{.State.StartedAt}}' || true
+            sudo docker port mani-web || true

@@ -53,7 +53,7 @@ pnpm --filter mcp-server start
 Build from the repository root:
 
 ```bash
-docker build -f Dockerfile.mcp -t bottie-mcp .
+docker build -f Dockerfile.mcp -t mani-mcp .
 ```
 
 Run the container:
@@ -67,18 +67,18 @@ docker run --rm -p 3001:3001 \
   -e SERVER_PRIVATE_KEY=... \
   -e MCP_CLIENT_SECRET=... \
   -e CHAIN_ID=5003 \
-  bottie-mcp
+  mani-mcp
 ```
 
 ## GitHub Actions deployment
 
-The workflow at [/.github/workflows/mcp-docker.yml](/C:/Users/XPS/mani/.github/workflows/mcp-docker.yml) does this:
+The workflow at [/.github/workflows/mcp-docker.yml](/C:/Users/XPS/mani/.github/workflows/mcp-docker.yml) now deploys both the web app and the MCP server:
 
-- builds `Dockerfile.mcp`
-- pushes the image to Docker Hub
+- builds `Dockerfile.web` and `Dockerfile.mcp`
+- pushes the images to Docker Hub
 - SSHes into the Ubuntu server
-- pulls the latest image
-- restarts the container with Docker
+- pulls the latest web and MCP images
+- restarts both containers with Docker
 
 Required GitHub secrets:
 
@@ -87,11 +87,30 @@ Required GitHub secrets:
 - `SSH_HOST_TEMP`
 - `SSH_USERNAME_TEMP`
 - `SSH_PRIVATE_TEMP`
+- `NEXT_PUBLIC_REOWN_PROJECT_ID_PROD`
+- `NEXT_PUBLIC_X402_FACILITATOR_URL_PROD`
+- `NEXT_PUBLIC_APP_URL_PROD`
+- `NEXT_PUBLIC_MCP_URL_PROD`
+- `NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS_PROD`
+- `NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS_PROD`
 
-Ubuntu server env file:
+Ubuntu server env files:
 
-- Path: `/home/ubuntu/bottie/.env.mcp`
-- Must contain `DATABASE_URL`, `SERVER_PRIVATE_KEY`, `MCP_CLIENT_SECRET`, `NEXT_APP_URL`, `MCP_PUBLIC_URL`, and `CHAIN_ID=5003`
+- `/home/ubuntu/bottie/.env.web`
+- `/home/ubuntu/bottie/.env.mcp`
+
+The web env file should contain the runtime values for the Next.js app.
+
+The MCP env file should contain:
+
+- `DATABASE_URL`
+- `SERVER_PRIVATE_KEY`
+- `MCP_CLIENT_SECRET`
+- `NEXT_APP_URL`
+- `MCP_PUBLIC_URL`
+- `CHAIN_ID=5003`
+
+The web container is deployed as `mani-web` on port `3000`, and the MCP container is deployed as `mani-mcp` on port `3001`.
 
 ## API endpoints
 
@@ -107,4 +126,3 @@ Ubuntu server env file:
 - The MCP server should be deployed on a public host.
 - Set `MCP_PUBLIC_URL` to the public URL, not localhost.
 - Link the public MCP URL in your DoraHacks submission if you expose it as part of the demo.
-

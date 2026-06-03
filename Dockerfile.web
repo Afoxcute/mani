@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1
+
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+WORKDIR /app
+
+FROM base AS builder
+
+ARG NEXT_PUBLIC_REOWN_PROJECT_ID
+ARG NEXT_PUBLIC_X402_FACILITATOR_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_MCP_URL
+ARG NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003
+ARG NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS
+ARG NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS
+
+ENV NEXT_PUBLIC_REOWN_PROJECT_ID=${NEXT_PUBLIC_REOWN_PROJECT_ID}
+ENV NEXT_PUBLIC_X402_FACILITATOR_URL=${NEXT_PUBLIC_X402_FACILITATOR_URL}
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+ENV NEXT_PUBLIC_MCP_URL=${NEXT_PUBLIC_MCP_URL}
+ENV NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=${NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID}
+ENV NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS=${NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS}
+ENV NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS=${NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS}
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages ./packages
+COPY apps/web ./apps/web
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm build:packages && pnpm --filter web build
+
+FROM base AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/web ./apps/web
+
+EXPOSE 3000
+ENV PORT=3000
+
+CMD ["pnpm", "--filter", "web", "start"]

@@ -129,10 +129,12 @@ HACKATHON_KEY=0x... npx hardhat ignition deploy ignition/modules/ActionRouter.ts
 - The MCP server is meant to run on a public host with `MCP_PUBLIC_URL` set.
 - The facilitator can run as a standalone service and should also be public if the web app is using it directly.
 - Mantle Sepolia is the active chain for the current repo state.
+- The current Docker deployment workflow builds and deploys both `mani-web` and `mani-mcp` to an Ubuntu host using Docker Hub images and two env files:
+  - `/home/ubuntu/bottie/.env.web`
+  - `/home/ubuntu/bottie/.env.mcp`
 
 ## Links
 
 - Source repo: https://github.com/Afoxcute/mani
 - Hackathon submission: https://dorahacks.io/buidl/44140
 - Demo video: add your video link here
-
