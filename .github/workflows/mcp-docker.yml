@@ -26,11 +26,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker
-
       - name: Build web image (PR validation)
         if: github.event_name == 'pull_request'
         run: |
@@ -66,7 +61,7 @@ jobs:
             --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003 \
             --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS="${{ env.WEB_AGENT_DELEGATOR_ADDRESS }}" \
             --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS="${{ env.WEB_ACTION_ROUTER_ADDRESS }}" \
-            -t mani-web:ci \
+            -t mani-web:latest \
             .
 
       - name: Build MCP image (push validation)
@@ -74,86 +69,110 @@ jobs:
         run: |
           docker build \
             -f Dockerfile.mcp \
-            -t mani-mcp:ci \
+            -t mani-mcp:latest \
             .
 
-      - name: Prepare SSH key for sync
+      - name: Prepare SSH key for deploy
         if: github.event_name == 'push'
         run: |
           install -m 600 /dev/null /tmp/mani_deploy_key
           printf '%s\n' "${{ env.SSH_PRIVATE_KEY }}" > /tmp/mani_deploy_key
-
-      - name: Sync source to Ubuntu server
-        if: github.event_name == 'push'
-        run: |
-          SSH_CMD="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
-          $SSH_CMD ${{ env.HOST_USERNAME }}@${{ env.HOST }} "mkdir -p /home/ubuntu/bottie/repo /home/ubuntu/bottie/config"
-          rsync -az --delete \
-            --exclude '.env' \
-            --exclude '.env.*' \
-            --exclude '**/.env' \
-            --exclude '**/.env.*' \
-            --exclude '.git/' \
-            --exclude '.git/**' \
-            --exclude 'node_modules/' \
-            --exclude '**/node_modules/' \
-            --exclude '.next/' \
-            --exclude '**/.next/' \
-            --exclude 'dist/' \
-            --exclude '**/dist/' \
-            --exclude '.turbo/' \
-            --exclude '**/.turbo/' \
-            --exclude 'coverage/' \
-            --exclude '**/coverage/' \
-            --rsh="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes" \
-            ./ \
-            ${{ env.HOST_USERNAME }}@${{ env.HOST }}:/home/ubuntu/bottie/repo/
 
       - name: Deploy to Ubuntu server
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
           echo "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          SSH_CMD="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
-          $SSH_CMD "${HOST_USERNAME}@${HOST}" "mkdir -p /home/ubuntu/bottie/config /home/ubuntu/bottie/repo"
-          $SSH_CMD "${HOST_USERNAME}@${HOST}" "chmod +x /home/ubuntu/bottie/repo/scripts/remote-deploy.sh && nohup /home/ubuntu/bottie/repo/scripts/remote-deploy.sh >/dev/null 2>&1 & echo \$! > /home/ubuntu/bottie/config/deploy.pid"
 
-          echo "Waiting for remote deployment to finish..."
-          status=""
-          for i in $(seq 1 240); do
-            status="$($SSH_CMD "${HOST_USERNAME}@${HOST}" "cat /home/ubuntu/bottie/config/deploy.status 2>/dev/null || true")"
-            if [ "$status" = "success" ]; then
-              echo "Remote deployment completed successfully."
-              break
-            fi
-            if [ "$status" = "failed" ]; then
-              echo "Remote deployment failed. Last log lines:"
-              $SSH_CMD "${HOST_USERNAME}@${HOST}" "tail -n 120 /home/ubuntu/bottie/config/deploy.log || true"
-              exit 1
-            fi
-            sleep 10
-          done
+          REMOTE_CMD=$(cat <<'REMOTE'
+set -eu
 
-          if [ "$status" != "success" ]; then
-            echo "Remote deployment timed out. Last log lines:"
-            $SSH_CMD "${HOST_USERNAME}@${HOST}" "tail -n 120 /home/ubuntu/bottie/config/deploy.log || true"
-            exit 1
-          fi
+APP_DIR=/home/ubuntu/bottie
+CONFIG_DIR=$APP_DIR/config
+WEB_ENV=$CONFIG_DIR/.env.web
+MCP_ENV=$CONFIG_DIR/.env.mcp
 
-          echo "Deployment logs:"
-          $SSH_CMD "${HOST_USERNAME}@${HOST}" "tail -n 60 /home/ubuntu/bottie/config/deploy.log || true"
+if [ ! -f "$WEB_ENV" ]; then
+  echo "ERROR: Missing web env file: $WEB_ENV"
+  exit 1
+fi
 
-      - name: Post-deploy verification
-        if: github.event_name == 'push' && success()
-        run: |
-          set -euo pipefail
-          SSH_CMD="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes"
-          $SSH_CMD "${HOST_USERNAME}@${HOST}" 'bash -s' <<'REMOTE'
-          set -e
-          echo "MCP container status:"
-          sudo docker inspect mani-mcp --format='Status: {{.State.Status}} | Started At: {{.State.StartedAt}}' || true
-          sudo docker port mani-mcp || true
-          echo "Web container status:"
-          sudo docker inspect mani-web --format='Status: {{.State.Status}} | Started At: {{.State.StartedAt}}' || true
-          sudo docker port mani-web || true
-          REMOTE
+if [ ! -f "$MCP_ENV" ]; then
+  echo "ERROR: Missing MCP env file: $MCP_ENV"
+  exit 1
+fi
+
+mkdir -p "$CONFIG_DIR"
+
+echo "Loading images from stdin..."
+sudo docker load
+
+echo "Creating Docker network if missing..."
+sudo docker network create mani-net >/dev/null 2>&1 || true
+
+echo "Stopping old containers..."
+stop_port_containers() {
+  port="$1"
+  ids="$(sudo docker ps --filter "publish=$port" --format '{{.ID}}')"
+  if [ -n "$ids" ]; then
+    echo "Stopping containers publishing port $port: $ids"
+    sudo docker stop $ids || true
+    sudo docker rm $ids || true
+  fi
+}
+
+stop_named_container() {
+  name="$1"
+  if sudo docker ps -a --format '{{.Names}}' | grep -q "^${name}$"; then
+    sudo docker stop "$name" || true
+    sudo docker rm "$name" || true
+  fi
+}
+
+stop_port_containers 3000
+stop_port_containers 3001
+stop_named_container mani-web
+stop_named_container mani-mcp
+
+echo "Starting MCP server..."
+sudo docker run -d \
+  --name mani-mcp \
+  --restart unless-stopped \
+  --network mani-net \
+  -p 3001:3001 \
+  --env-file "$MCP_ENV" \
+  mani-mcp:latest
+
+echo "Starting web app..."
+sudo docker run -d \
+  --name mani-web \
+  --restart unless-stopped \
+  --network mani-net \
+  -p 3000:3000 \
+  --env-file "$WEB_ENV" \
+  mani-web:latest
+
+echo "Verifying deployment..."
+sleep 10
+
+if ! sudo docker ps --format '{{.Names}}' | grep -q '^mani-mcp$'; then
+  echo "ERROR: mani-mcp container failed to start"
+  sudo docker logs mani-mcp || true
+  exit 1
+fi
+
+if ! sudo docker ps --format '{{.Names}}' | grep -q '^mani-web$'; then
+  echo "ERROR: mani-web container failed to start"
+  sudo docker logs mani-web || true
+  exit 1
+fi
+
+echo "OK: both containers are running"
+echo "MCP logs:"
+sudo docker logs --tail 30 mani-mcp
+echo "Web logs:"
+sudo docker logs --tail 30 mani-web
+REMOTE
+          )
+
+          docker save mani-web:latest mani-mcp:latest | ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes "${HOST_USERNAME}@${HOST}" "$REMOTE_CMD"
