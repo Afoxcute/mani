@@ -113,136 +113,33 @@ jobs:
         run: |
           set -euo pipefail
           echo "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "mkdir -p /home/ubuntu/bottie/config /home/ubuntu/bottie/repo"
+          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "chmod +x /home/ubuntu/bottie/repo/scripts/remote-deploy.sh && nohup /home/ubuntu/bottie/repo/scripts/remote-deploy.sh >/dev/null 2>&1 & echo \$! > /home/ubuntu/bottie/config/deploy.pid"
 
-          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" 'bash -s' <<'REMOTE'
-          set -euo pipefail
-          echo "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-
-          APP_DIR=/home/ubuntu/bottie
-          REPO_DIR=$APP_DIR/repo
-          CONFIG_DIR=$APP_DIR/config
-          WEB_ENV=$CONFIG_DIR/.env.web
-          MCP_ENV=$CONFIG_DIR/.env.mcp
-
-          if [ ! -f "$WEB_ENV" ]; then
-            echo "ERROR: Missing web env file: $WEB_ENV"
-            exit 1
-          fi
-
-          if [ ! -f "$MCP_ENV" ]; then
-            echo "ERROR: Missing MCP env file: $MCP_ENV"
-            exit 1
-          fi
-
-          if [ ! -d "$REPO_DIR" ]; then
-            echo "ERROR: Missing synced repo directory: $REPO_DIR"
-            exit 1
-          fi
-
-          echo "Creating Docker network if missing..."
-          sudo docker network create mani-net >/dev/null 2>&1 || true
-
-          echo "Current Docker disk usage before cleanup:"
-          sudo docker system df || true
-
-          echo "Pruning unused Docker resources to free space..."
-          sudo docker container prune -f || true
-          sudo docker image prune -af || true
-          sudo docker builder prune -af || true
-          sudo docker volume prune -f || true
-
-          echo "Docker disk usage after cleanup:"
-          sudo docker system df || true
-
-          echo "Loading web env for build-time public variables..."
-          set -a
-          . "$WEB_ENV"
-          set +a
-
-          echo "Building web image on the server..."
-          sudo docker build \
-            -f "$REPO_DIR/Dockerfile.web" \
-            --build-arg NEXT_PUBLIC_REOWN_PROJECT_ID="$NEXT_PUBLIC_REOWN_PROJECT_ID" \
-            --build-arg NEXT_PUBLIC_X402_FACILITATOR_URL="$NEXT_PUBLIC_X402_FACILITATOR_URL" \
-            --build-arg NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
-            --build-arg NEXT_PUBLIC_MCP_URL="$NEXT_PUBLIC_MCP_URL" \
-            --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003 \
-            --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS="$NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS" \
-            --build-arg NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS="$NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS" \
-            -t mani-web:latest \
-            "$REPO_DIR"
-
-          echo "Building MCP image on the server..."
-          sudo docker build \
-            -f "$REPO_DIR/Dockerfile.mcp" \
-            -t mani-mcp:latest \
-            "$REPO_DIR"
-
-          echo "Stopping old containers..."
-          stop_port_containers() {
-            local port="$1"
-            local ids
-            ids=$(sudo docker ps --filter "publish=$port" --format '{{.ID}}')
-            if [ -n "$ids" ]; then
-              echo "Stopping containers publishing port $port: $ids"
-              sudo docker stop $ids || true
-              sudo docker rm $ids || true
+          echo "Waiting for remote deployment to finish..."
+          status=""
+          for i in $(seq 1 240); do
+            status="$(ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "cat /home/ubuntu/bottie/config/deploy.status 2>/dev/null || true")"
+            if [ "$status" = "success" ]; then
+              echo "Remote deployment completed successfully."
+              break
             fi
-          }
-
-          stop_named_container() {
-            local name="$1"
-            if sudo docker ps -a --format '{{.Names}}' | grep -q "^${name}$"; then
-              sudo docker stop "$name" || true
-              sudo docker rm "$name" || true
+            if [ "$status" = "failed" ]; then
+              echo "Remote deployment failed. Last log lines:"
+              ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "tail -n 120 /home/ubuntu/bottie/config/deploy.log || true"
+              exit 1
             fi
-          }
+            sleep 10
+          done
 
-          stop_port_containers 3000
-          stop_port_containers 3001
-          stop_named_container mani-web
-          stop_named_container mani-mcp
-
-          echo "Starting MCP server..."
-          sudo docker run -d \
-            --name mani-mcp \
-            --restart unless-stopped \
-            --network mani-net \
-            -p 3001:3001 \
-            --env-file "$MCP_ENV" \
-            mani-mcp:latest
-
-          echo "Starting web app..."
-          sudo docker run -d \
-            --name mani-web \
-            --restart unless-stopped \
-            --network mani-net \
-            -p 3000:3000 \
-            --env-file "$WEB_ENV" \
-            mani-web:latest
-
-          echo "Verifying deployment..."
-          sleep 10
-
-          if ! sudo docker ps --format '{{.Names}}' | grep -q '^mani-mcp$'; then
-            echo "ERROR: mani-mcp container failed to start"
-            sudo docker logs mani-mcp || true
+          if [ "$status" != "success" ]; then
+            echo "Remote deployment timed out. Last log lines:"
+            ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "tail -n 120 /home/ubuntu/bottie/config/deploy.log || true"
             exit 1
           fi
 
-          if ! sudo docker ps --format '{{.Names}}' | grep -q '^mani-web$'; then
-            echo "ERROR: mani-web container failed to start"
-            sudo docker logs mani-web || true
-            exit 1
-          fi
-
-          echo "OK: both containers are running"
-          echo "MCP logs:"
-          sudo docker logs --tail 30 mani-mcp
-          echo "Web logs:"
-          sudo docker logs --tail 30 mani-web
-          echo "Deployment completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          REMOTE
+          echo "Deployment logs:"
+          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no "${HOST_USERNAME}@${HOST}" "tail -n 60 /home/ubuntu/bottie/config/deploy.log || true"
 
       - name: Post-deploy verification
         if: github.event_name == 'push' && success()
