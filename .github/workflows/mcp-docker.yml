@@ -77,18 +77,32 @@ jobs:
             -t mani-mcp:ci \
             .
 
+      - name: Prepare SSH key for sync
+        if: github.event_name == 'push'
+        run: |
+          install -m 600 /dev/null /tmp/mani_deploy_key
+          printf '%s\n' "${{ env.SSH_PRIVATE_KEY }}" > /tmp/mani_deploy_key
+
       - name: Sync source to Ubuntu server
         if: github.event_name == 'push'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ env.HOST }}
-          username: ${{ env.HOST_USERNAME }}
-          key: ${{ env.SSH_PRIVATE_KEY }}
-          source: "."
-          exclude: ".git/**,**/.git/**,node_modules/**,**/node_modules/**,.next/**,**/.next/**,dist/**,**/dist/**,.turbo/**,**/.turbo/**,coverage/**,**/coverage/**"
-          target: /home/ubuntu/bottie
-          overwrite: true
-          strip_components: 0
+        run: |
+          ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no ${{ env.HOST_USERNAME }}@${{ env.HOST }} "mkdir -p /home/ubuntu/bottie"
+          rsync -az --delete \
+            --exclude '.git/' \
+            --exclude '.git/**' \
+            --exclude 'node_modules/' \
+            --exclude '**/node_modules/' \
+            --exclude '.next/' \
+            --exclude '**/.next/' \
+            --exclude 'dist/' \
+            --exclude '**/dist/' \
+            --exclude '.turbo/' \
+            --exclude '**/.turbo/' \
+            --exclude 'coverage/' \
+            --exclude '**/coverage/' \
+            --rsh="ssh -i /tmp/mani_deploy_key -o StrictHostKeyChecking=no" \
+            ./ \
+            ${{ env.HOST_USERNAME }}@${{ env.HOST }}:/home/ubuntu/bottie/
 
       - name: Deploy to Ubuntu server
         if: github.event_name == 'push'
