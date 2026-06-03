@@ -20,7 +20,17 @@ async function getServerPublicKey(): Promise<CryptoKey> {
 
   const response = await fetch('/api/crypto/public-key')
   if (!response.ok) {
-    throw new Error('Failed to fetch server public key')
+    const errorText = await response.text().catch(() => '')
+    let message = `Failed to fetch server public key (${response.status})`
+    if (errorText) {
+      try {
+        const parsed = JSON.parse(errorText) as { error?: string; message?: string; details?: string }
+        message = parsed.message || parsed.error || message
+      } catch {
+        message = `${message}: ${errorText}`
+      }
+    }
+    throw new Error(message)
   }
 
   const { publicKey: pemKey } = await response.json()

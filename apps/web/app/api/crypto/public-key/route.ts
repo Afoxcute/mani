@@ -15,9 +15,20 @@ export async function GET() {
       hash: 'SHA-256',
     })
   } catch (error) {
-    console.error('[GET /api/crypto/public-key] Error:', error)
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[GET /api/crypto/public-key] Error:', {
+      message,
+      hasServerPublicKey: Boolean(process.env.SERVER_PUBLIC_KEY),
+      hasServerPrivateKey: Boolean(process.env.SERVER_PRIVATE_KEY),
+      error,
+    })
     return NextResponse.json(
-      { error: 'Server encryption not configured' },
+      {
+        error: 'Server encryption not configured',
+        message,
+        hasServerPublicKey: Boolean(process.env.SERVER_PUBLIC_KEY),
+        hasServerPrivateKey: Boolean(process.env.SERVER_PRIVATE_KEY),
+      },
       { status: 500 }
     )
   }
