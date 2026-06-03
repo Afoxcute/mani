@@ -193,8 +193,12 @@ export async function POST(request: NextRequest) {
   const tokenHash = hashToken(accessToken)
   const now = new Date()
 
-  // Token expires when the session expires
-  const expiresAt = session.validUntil
+  // Give the OAuth access token a longer client-visible lifetime so the
+  // MCP client does not treat the connection as expired too early.
+  // Session validation still happens server-side on every request, so the
+  // token cannot outlive the actual on-chain/session authorization.
+  const tokenTtlMs = 30 * 24 * 60 * 60 * 1000 // 30 days
+  const expiresAt = new Date(now.getTime() + tokenTtlMs)
 
   // Create access token record
   const [tokenRecord] = await db.insert(oauthAccessTokens).values({

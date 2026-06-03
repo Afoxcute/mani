@@ -235,10 +235,9 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
 
     const metadata = {
       resource: `${mcpServerUrl}/mcp/${slug}`,
-      // Point to MCP server's own slug-aware OAuth discovery endpoint
-      // Clients will fetch {auth_server}/.well-known/oauth-authorization-server
-      // which returns metadata with mcp_slug in authorization_endpoint and registration_endpoint
-      authorization_servers: [`${mcpServerUrl}/mcp/${slug}`],
+      // Point clients at the actual OAuth authorization server (the web app),
+      // not the protected resource URL itself.
+      authorization_servers: [config.nextAppUrl],
       scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
       bearer_methods_supported: ['header'],
     }
