@@ -58,8 +58,6 @@ jobs:
             NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003
             NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS=${{ env.WEB_AGENT_DELEGATOR_ADDRESS }}
             NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS=${{ env.WEB_ACTION_ROUTER_ADDRESS }}
-          cache-from: type=gha,scope=mani-web
-          cache-to: type=gha,mode=max,scope=mani-web
 
       - name: Build MCP image (PR validation)
         if: github.event_name == 'pull_request'
@@ -69,8 +67,6 @@ jobs:
           file: Dockerfile.mcp
           push: false
           tags: mani-mcp:pr
-          cache-from: type=gha,scope=mani-mcp
-          cache-to: type=gha,mode=max,scope=mani-mcp
 
       - name: Build and push web image
         if: github.event_name == 'push'
@@ -88,8 +84,6 @@ jobs:
             NEXT_PUBLIC_MANTLE_SEPOLIA_CHAIN_ID=5003
             NEXT_PUBLIC_MANTLE_SEPOLIA_AGENT_DELEGATOR_ADDRESS=${{ env.WEB_AGENT_DELEGATOR_ADDRESS }}
             NEXT_PUBLIC_MANTLE_SEPOLIA_ACTION_ROUTER_ADDRESS=${{ env.WEB_ACTION_ROUTER_ADDRESS }}
-          cache-from: type=gha,scope=mani-web
-          cache-to: type=gha,mode=max,scope=mani-web
 
       - name: Build and push MCP image
         if: github.event_name == 'push'
@@ -99,8 +93,6 @@ jobs:
           file: Dockerfile.mcp
           push: true
           tags: ${{ env.MCP_IMAGE }}
-          cache-from: type=gha,scope=mani-mcp
-          cache-to: type=gha,mode=max,scope=mani-mcp
 
       - name: Deploy to Ubuntu server
         if: github.event_name == 'push'
