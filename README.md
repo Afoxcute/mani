@@ -132,6 +132,7 @@ HACKATHON_KEY=0x... npx hardhat ignition deploy ignition/modules/ActionRouter.ts
 - The current Docker deployment workflow builds and deploys both `mani-web` and `mani-mcp` to an Ubuntu host using Docker Hub images and two env files:
   - `/home/ubuntu/bottie/.env.web`
   - `/home/ubuntu/bottie/.env.mcp`
+  - the synced source lives in `/home/ubuntu/bottie/repo`
 
 ## Links
 

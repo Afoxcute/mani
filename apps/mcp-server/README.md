@@ -99,6 +99,8 @@ Ubuntu server env files:
 - `/home/ubuntu/bottie/.env.web`
 - `/home/ubuntu/bottie/.env.mcp`
 
+The synced source code lives in `/home/ubuntu/bottie/repo`.
+
 The web env file should contain the runtime values for the Next.js app.
 
 The MCP env file should contain:
