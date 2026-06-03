@@ -85,6 +85,7 @@ jobs:
           username: ${{ env.HOST_USERNAME }}
           key: ${{ env.SSH_PRIVATE_KEY }}
           source: "."
+          exclude: ".git/**,**/.git/**,node_modules/**,**/node_modules/**,.next/**,**/.next/**,dist/**,**/dist/**,.turbo/**,**/.turbo/**,coverage/**,**/coverage/**"
           target: /home/ubuntu/bottie
           overwrite: true
           strip_components: 0
