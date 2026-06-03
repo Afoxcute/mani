@@ -130,8 +130,8 @@ HACKATHON_KEY=0x... npx hardhat ignition deploy ignition/modules/ActionRouter.ts
 - The facilitator can run as a standalone service and should also be public if the web app is using it directly.
 - Mantle Sepolia is the active chain for the current repo state.
 - The current Docker deployment workflow builds and deploys both `mani-web` and `mani-mcp` to an Ubuntu host using Docker Hub images and two env files:
-  - `/home/ubuntu/bottie/.env.web`
-  - `/home/ubuntu/bottie/.env.mcp`
+  - `/home/ubuntu/bottie/config/.env.web`
+  - `/home/ubuntu/bottie/config/.env.mcp`
   - the synced source lives in `/home/ubuntu/bottie/repo`
 
 ## Links

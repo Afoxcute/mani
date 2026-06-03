@@ -96,8 +96,8 @@ Required GitHub secrets:
 
 Ubuntu server env files:
 
-- `/home/ubuntu/bottie/.env.web`
-- `/home/ubuntu/bottie/.env.mcp`
+- `/home/ubuntu/bottie/config/.env.web`
+- `/home/ubuntu/bottie/config/.env.mcp`
 
 The synced source code lives in `/home/ubuntu/bottie/repo`.
 
