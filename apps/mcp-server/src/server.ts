@@ -84,6 +84,8 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
       scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
       token_endpoint_auth_methods_supported: ['client_secret_post'],
     }
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
     res.json(metadata)
   })
 
@@ -125,6 +127,8 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
         token_endpoint_auth_methods_supported: ['client_secret_post'],
       }
       console.log(`[.well-known/oauth-authorization-server/${fullPath}] Returning metadata with mcp_slug:`, slug)
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      res.setHeader('Pragma', 'no-cache')
       res.json(metadata)
     } else {
       logMcpEvent('Discovery metadata requested without slug match', {
@@ -143,6 +147,8 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
         scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
         token_endpoint_auth_methods_supported: ['client_secret_post'],
       }
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      res.setHeader('Pragma', 'no-cache')
       res.json(metadata)
     }
   })
@@ -171,18 +177,23 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
    */
   app.get('/.well-known/oauth-protected-resource', (req, res) => {
     const mcpServerUrl = getPublicUrl(req)
+    const referer = req.get('referer') || req.get('origin')
+    const slugMatch = referer ? referer.match(/\/mcp\/([^\/\?]+)/) : null
+    const slug = slugMatch ? slugMatch[1] : null
     logMcpEvent('Protected resource metadata requested', {
-      slug: null,
+      slug,
       resource: mcpServerUrl,
       requestHost: req.get('host'),
       forwardedHost: req.get('x-forwarded-host') || null,
     })
     const metadata = {
       resource: mcpServerUrl,
-      authorization_servers: [config.nextAppUrl],
+      authorization_servers: [slug ? `${config.nextAppUrl}/oauth/${slug}` : config.nextAppUrl],
       scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
       bearer_methods_supported: ['header'],
     }
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
     res.json(metadata)
   })
 
@@ -235,12 +246,13 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
 
     const metadata = {
       resource: `${mcpServerUrl}/mcp/${slug}`,
-      // Point clients at the actual OAuth authorization server (the web app),
-      // not the protected resource URL itself.
-      authorization_servers: [config.nextAppUrl],
+      // Point clients at the slug-aware OAuth authorization server path.
+      authorization_servers: [`${config.nextAppUrl}/oauth/${slug}`],
       scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
       bearer_methods_supported: ['header'],
     }
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
     res.json(metadata)
   })
 

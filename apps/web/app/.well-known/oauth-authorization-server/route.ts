@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
 
     // Token configuration
-    token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
+    token_endpoint_auth_methods_supported: ['client_secret_post'],
 
     // Service documentation
     service_documentation: `${issuer}/docs/oauth`,
