@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, oauthClients } from '@/lib/db'
-import { eq } from 'drizzle-orm'
 import { randomBytes } from 'crypto'
 import * as bcrypt from 'bcrypt'
 
@@ -11,9 +10,6 @@ import * as bcrypt from 'bcrypt'
  * https://datatracker.ietf.org/doc/html/rfc7591
  *
  * MCP clients use this to register themselves dynamically.
- *
- * DEDUPLICATION: If a client with matching redirect_uris already exists,
- * we return the existing client with a refreshed secret (avoids duplicate entries).
  *
  * Body (JSON):
  * - redirect_uris: Array of redirect URIs (required)
@@ -97,69 +93,32 @@ export async function POST(request: NextRequest) {
       ? scope.split(' ').filter(Boolean)
       : ['x402:payments', 'mcp:tools', 'workflow:token-approvals']
 
-    // Normalize redirect URIs for comparison (sorted, lowercase)
-    const normalizedUris = [...redirectUris].map((u: string) => u.toLowerCase()).sort()
-
-    // Check for existing client with matching redirect_uris
-    const allClients = await db.select().from(oauthClients)
-    const existingClient = allClients.find(client => {
-      if (!client.redirectUris || !Array.isArray(client.redirectUris)) return false
-      const clientNormalizedUris = [...(client.redirectUris as string[])].map(u => u.toLowerCase()).sort()
-      return JSON.stringify(clientNormalizedUris) === JSON.stringify(normalizedUris)
-    })
-
-    // Generate new secret (used for both new and existing clients)
+    // Always create a fresh dynamic client. Reusing a client by redirect URI
+    // and rotating its secret invalidates existing Claude connector state.
     const clientSecret = randomBytes(32).toString('base64url')
     const secretHash = await bcrypt.hash(clientSecret, 10)
+    const clientId = `mcp_${randomBytes(16).toString('hex')}`
+    await db.insert(oauthClients).values({
+      id: clientId,
+      secretHash,
+      name: clientName || 'MCP Client',
+      description: clientUri ? `Client from ${clientUri}` : 'Dynamically registered MCP client',
+      logoUrl: logoUri || null,
+      redirectUris,
+      allowedScopes: requestedScopes,
+      mcpSlug: mcpSlug || null,
+      isActive: true,
+    })
 
-    let clientId: string
-
-    if (existingClient) {
-      // Update existing client with new secret and scopes
-      clientId = existingClient.id
-      await db.update(oauthClients)
-        .set({
-          secretHash,
-          name: clientName || existingClient.name,
-          logoUrl: logoUri || existingClient.logoUrl,
-          allowedScopes: requestedScopes, // Refresh allowed scopes
-          mcpSlug: mcpSlug || existingClient.mcpSlug, // Update slug if provided
-        })
-        .where(eq(oauthClients.id, clientId))
-
-      console.log('[POST /api/oauth/register] Existing client refreshed:', {
-        clientId,
-        name: clientName || existingClient.name,
-        redirectUris,
-        scopes: requestedScopes,
-        mcpSlug: mcpSlug || existingClient.mcpSlug,
-      })
-    } else {
-      // Create new client
-      clientId = `mcp_${randomBytes(16).toString('hex')}`
-      await db.insert(oauthClients).values({
-        id: clientId,
-        secretHash,
-        name: clientName || 'MCP Client',
-        description: clientUri ? `Client from ${clientUri}` : 'Dynamically registered MCP client',
-        logoUrl: logoUri || null,
-        redirectUris,
-        allowedScopes: requestedScopes,
-        mcpSlug: mcpSlug || null,
-        isActive: true,
-      })
-
-      console.log('[POST /api/oauth/register] New client registered:', {
-        clientId,
-        name: clientName || 'MCP Client',
-        redirectUris,
-        scopes: requestedScopes,
-        mcpSlug,
-      })
-    }
+    console.log('[POST /api/oauth/register] New client registered:', {
+      clientId,
+      name: clientName || 'MCP Client',
+      redirectUris,
+      scopes: requestedScopes,
+      mcpSlug,
+    })
 
     // Return client credentials (RFC 7591 response)
-    // Note: For existing clients, we return 200 instead of 201
     return NextResponse.json({
       client_id: clientId,
       client_secret: clientSecret,
@@ -170,11 +129,11 @@ export async function POST(request: NextRequest) {
       client_uri: clientUri,
       logo_uri: logoUri,
       scope: requestedScopes.join(' '),
-      token_endpoint_auth_method: 'client_secret_post',
+      token_endpoint_auth_method: 'client_secret_basic',
       grant_types: ['authorization_code'],
       response_types: ['code'],
     }, {
-      status: existingClient ? 200 : 201,
+      status: 201,
       headers: corsHeaders(),
     })
   } catch (error) {

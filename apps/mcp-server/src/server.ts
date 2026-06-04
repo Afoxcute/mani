@@ -82,7 +82,7 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
       grant_types_supported: ['authorization_code'],
       code_challenge_methods_supported: ['S256'],
       scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
-      token_endpoint_auth_methods_supported: ['client_secret_post'],
+      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
     }
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
     res.setHeader('Pragma', 'no-cache')
@@ -124,7 +124,7 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
         grant_types_supported: ['authorization_code'],
         code_challenge_methods_supported: ['S256'],
         scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
-        token_endpoint_auth_methods_supported: ['client_secret_post'],
+        token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
       }
       console.log(`[.well-known/oauth-authorization-server/${fullPath}] Returning metadata with mcp_slug:`, slug)
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -145,7 +145,7 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
         grant_types_supported: ['authorization_code'],
         code_challenge_methods_supported: ['S256'],
         scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
-        token_endpoint_auth_methods_supported: ['client_secret_post'],
+        token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
       }
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
       res.setHeader('Pragma', 'no-cache')
@@ -222,7 +222,7 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
       grant_types_supported: ['authorization_code'],
       code_challenge_methods_supported: ['S256'],
       scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
-      token_endpoint_auth_methods_supported: ['client_secret_post'],
+      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
     }
     res.json(metadata)
   })

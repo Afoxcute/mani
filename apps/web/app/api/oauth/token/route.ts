@@ -11,6 +11,30 @@ import {
 } from '@/lib/auth/oauth'
 import * as bcrypt from 'bcrypt'
 
+function parseBasicClientCredentials(authHeader: string | null): {
+  clientId: string
+  clientSecret: string
+} | null {
+  if (!authHeader?.startsWith('Basic ')) {
+    return null
+  }
+
+  try {
+    const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8')
+    const separatorIndex = decoded.indexOf(':')
+    if (separatorIndex === -1) {
+      return null
+    }
+
+    return {
+      clientId: decodeURIComponent(decoded.slice(0, separatorIndex)),
+      clientSecret: decodeURIComponent(decoded.slice(separatorIndex + 1)),
+    }
+  } catch {
+    return null
+  }
+}
+
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -44,14 +68,18 @@ export async function POST(request: NextRequest) {
     body = await request.json()
   }
 
+  const basicCredentials = parseBasicClientCredentials(request.headers.get('authorization'))
+
   const {
     grant_type: grantType,
     code,
     redirect_uri: redirectUri,
-    client_id: clientId,
-    client_secret: clientSecret,
+    client_id: bodyClientId,
+    client_secret: bodyClientSecret,
     code_verifier: codeVerifier,
   } = body
+  const clientId = bodyClientId || basicCredentials?.clientId
+  const clientSecret = bodyClientSecret || basicCredentials?.clientSecret
 
   console.log('[POST /api/oauth/token] Incoming token exchange request:', {
     grantType,
@@ -59,6 +87,7 @@ export async function POST(request: NextRequest) {
     codePresent: Boolean(code),
     redirectUri: redirectUri || null,
     codeVerifierPresent: Boolean(codeVerifier),
+    authMethod: basicCredentials ? 'client_secret_basic' : 'client_secret_post',
     contentType,
     userAgent: request.headers.get('user-agent') || null,
     referer: request.headers.get('referer') || null,
