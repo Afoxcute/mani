@@ -188,7 +188,7 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
     })
     const metadata = {
       resource: mcpServerUrl,
-      authorization_servers: [config.nextAppUrl],
+      authorization_servers: [slug ? `${config.nextAppUrl}/oauth/${slug}` : config.nextAppUrl],
       scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
       bearer_methods_supported: ['header'],
     }

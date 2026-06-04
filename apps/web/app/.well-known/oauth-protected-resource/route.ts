@@ -13,12 +13,21 @@ export async function GET(request: NextRequest) {
   // Use MCP_PUBLIC_URL for the resource (subdomain for direct client access)
   const mcpServerUrl = process.env.MCP_PUBLIC_URL || 'http://localhost:3001'
 
+  let mcpSlug: string | null = null
+  const referer = request.headers.get('referer') || request.headers.get('origin')
+  if (referer) {
+    const match = referer.match(/\/mcp\/([^\/\?]+)/)
+    if (match) {
+      mcpSlug = match[1]
+    }
+  }
+
   const metadata = {
     // The protected resource identifier (public URL for direct client access)
     resource: mcpServerUrl,
 
     // Authorization servers that can be used to obtain tokens
-    authorization_servers: [resourceUrl],
+    authorization_servers: [mcpSlug ? `${resourceUrl}/oauth/${mcpSlug}` : resourceUrl],
 
     // Scopes required for accessing this resource
     scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
