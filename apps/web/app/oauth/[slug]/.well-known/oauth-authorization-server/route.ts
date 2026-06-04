@@ -26,8 +26,8 @@ export async function GET(
   const slugParam = `?mcp_slug=${encodeURIComponent(slug)}`
 
   const metadata = {
-    // Keep issuer on the root authorization server origin for compatibility.
-    issuer,
+    // Keep issuer aligned with this slug-specific discovery endpoint.
+    issuer: `${issuer}/oauth/${slug}`,
     authorization_endpoint: `${issuer}/authorize${slugParam}`,
     token_endpoint: `${issuer}/api/oauth/token`,
 

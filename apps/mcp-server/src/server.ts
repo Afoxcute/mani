@@ -246,8 +246,8 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
 
     const metadata = {
       resource: `${mcpServerUrl}/mcp/${slug}`,
-      // Point clients at the root OAuth authorization server origin.
-      authorization_servers: [config.nextAppUrl],
+      // Point clients at the slug-specific OAuth authorization server path.
+      authorization_servers: [`${config.nextAppUrl}/oauth/${slug}`],
       scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
       bearer_methods_supported: ['header'],
     }

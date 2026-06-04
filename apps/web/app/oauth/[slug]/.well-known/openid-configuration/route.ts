@@ -25,7 +25,7 @@ export async function GET(
   const slugParam = `?mcp_slug=${encodeURIComponent(slug)}`
 
   const metadata = {
-    // Issuer should match this endpoint's base path
+    // Keep issuer aligned with this slug-specific discovery endpoint.
     issuer: `${issuer}/oauth/${slug}`,
     authorization_endpoint: `${issuer}/authorize${slugParam}`,
     token_endpoint: `${issuer}/api/oauth/token`,
@@ -42,7 +42,7 @@ export async function GET(
     scopes_supported: ['x402:payments', 'mcp:tools', 'workflow:token-approvals'],
 
     // Token configuration
-    token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
+    token_endpoint_auth_methods_supported: ['client_secret_post'],
 
     // Service documentation
     service_documentation: `${issuer}/docs/oauth`,
