@@ -1,4 +1,4 @@
-name: Build and Deploy Mani Web + MCP
+name: Build and Deploy Mani Web + MCP.
 
 on:
   push:
