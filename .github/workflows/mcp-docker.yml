@@ -139,6 +139,12 @@ jobs:
 
             log "Deployment started at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
+            OWNER="$(printf '%s' "$DOCKER_USERNAME" | tr '[:upper:]' '[:lower:]')"
+            WEB_IMAGE="docker.io/$OWNER/mani-web:latest"
+            MCP_IMAGE="docker.io/$OWNER/mani-mcp:latest"
+            log "Web image: $WEB_IMAGE"
+            log "MCP image: $MCP_IMAGE"
+
             [ -f "$WEB_ENV" ] || fail "Missing web env file: $WEB_ENV"
             [ -f "$MCP_ENV" ] || fail "Missing MCP env file: $MCP_ENV"
 
@@ -222,6 +228,33 @@ jobs:
             sudo docker logs --tail 30 mani-mcp | tee -a "$LOG_FILE"
             log "MCP runtime safe env:"
             sudo docker exec mani-mcp sh -lc 'printf "MCP_PUBLIC_URL=%s\nNEXT_APP_URL=%s\nCHAIN_ID=%s\n" "$MCP_PUBLIC_URL" "$NEXT_APP_URL" "$CHAIN_ID"' | tee -a "$LOG_FILE"
+
+            if ! command -v curl >/dev/null 2>&1; then
+              fail "curl is required on the Ubuntu server for deployment smoke checks"
+            fi
+
+            log "Local MCP smoke check..."
+            curl -i -sS --max-time 20 "http://127.0.0.1:3001/__debug/mcp" | tee -a "$LOG_FILE"
+
+            log "Public MCP DNS resolution..."
+            PUBLIC_HOST="$(printf '%s' "$MCP_PUBLIC_URL_VALUE" | sed -E 's#^https?://([^/]+).*#\1#')"
+            getent hosts "$PUBLIC_HOST" | tee -a "$LOG_FILE" || fail "Could not resolve MCP public host: $PUBLIC_HOST"
+
+            log "Public MCP debug smoke check..."
+            curl -i -sS --max-time 30 "$MCP_PUBLIC_URL_VALUE/__debug/mcp" | tee -a "$LOG_FILE"
+
+            log "Public MCP protected-resource smoke check..."
+            curl -i -sS --max-time 30 "$MCP_PUBLIC_URL_VALUE/mcp/mani/.well-known/oauth-protected-resource" | tee -a "$LOG_FILE"
+
+            log "Public MCP unauthorized POST smoke check..."
+            curl -i -sS --max-time 30 \
+              -X POST "$MCP_PUBLIC_URL_VALUE/mcp/mani" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer test" \
+              --data '{}' | tee -a "$LOG_FILE"
+
+            log "MCP logs after smoke checks:"
+            sudo docker logs --tail 80 mani-mcp | tee -a "$LOG_FILE"
             log "Web logs:"
             sudo docker logs --tail 30 mani-web | tee -a "$LOG_FILE"
             log "Deployment completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"

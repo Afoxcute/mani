@@ -70,6 +70,38 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
   // Parse JSON bodies
   app.use(express.json())
 
+  app.all('/__debug/mcp', (req, res) => {
+    const publicUrl = getPublicUrl(req)
+    logMcpEvent('Debug endpoint requested', {
+      publicUrl,
+      nextAppUrl: config.nextAppUrl,
+      chainId: config.chainId,
+      method: req.method,
+      path: req.originalUrl,
+    })
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
+    res.json({
+      ok: true,
+      service: 'mani-mcp',
+      publicUrl,
+      nextAppUrl: config.nextAppUrl,
+      chainId: config.chainId,
+      endpoints: {
+        health: `${publicUrl}/health`,
+        mcp: `${publicUrl}/mcp/mani`,
+        protectedResource: `${publicUrl}/mcp/mani/.well-known/oauth-protected-resource`,
+      },
+      request: {
+        method: req.method,
+        host: req.get('host') || null,
+        forwardedHost: req.get('x-forwarded-host') || null,
+        forwardedProto: req.get('x-forwarded-proto') || null,
+        userAgent: req.get('user-agent') || null,
+      },
+    })
+  })
+
   // Serve favicon
   app.use('/favicon.ico', express.static(path.join(__dirname, '../public/favicon.ico')))
 
