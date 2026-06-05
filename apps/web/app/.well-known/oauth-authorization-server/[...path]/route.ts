@@ -32,12 +32,14 @@ export async function GET(
     console.log(`[.well-known/oauth-authorization-server/${path.join('/')}] Extracted mcp_slug:`, mcpSlug)
   }
 
-  // Build endpoints with optional mcp_slug
+  // Build endpoints with optional mcp_slug. When discovery is requested for
+  // /oauth/:slug, keep the issuer aligned with that slug-specific auth server.
+  const authIssuer = mcpSlug ? `${issuer}/oauth/${encodeURIComponent(mcpSlug)}` : issuer
   const slugParam = mcpSlug ? `?mcp_slug=${encodeURIComponent(mcpSlug)}` : ''
 
   const metadata = {
     // Required
-    issuer,
+    issuer: authIssuer,
     authorization_endpoint: `${issuer}/authorize${slugParam}`,
     token_endpoint: `${issuer}/api/oauth/token`,
 

@@ -68,14 +68,17 @@ export async function validateBearerToken(authHeader: string | null | undefined)
     return null
   }
 
-  // Check if session is still valid (time bounds)
+  // Check if session is still valid (time bounds). Allow a small clock-skew
+  // window so freshly granted sessions are not rejected while clocks settle.
   const now = new Date()
-  if (now < session.validAfter || now > session.validUntil) {
+  const clockSkewMs = 2 * 60 * 1000
+  if (now.getTime() + clockSkewMs < session.validAfter.getTime() || now > session.validUntil) {
     console.log('[MCP OAuth] Session outside validity window', {
       sessionId: session.sessionId,
       validAfter: session.validAfter.toISOString(),
       validUntil: session.validUntil.toISOString(),
       now: now.toISOString(),
+      clockSkewMs,
     })
     return null
   }
