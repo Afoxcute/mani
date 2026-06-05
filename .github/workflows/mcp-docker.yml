@@ -142,6 +142,15 @@ jobs:
             [ -f "$WEB_ENV" ] || fail "Missing web env file: $WEB_ENV"
             [ -f "$MCP_ENV" ] || fail "Missing MCP env file: $MCP_ENV"
 
+            MCP_PUBLIC_URL_VALUE="$(grep -E '^MCP_PUBLIC_URL=' "$MCP_ENV" | tail -n 1 | cut -d= -f2- || true)"
+            NEXT_APP_URL_VALUE="$(grep -E '^NEXT_APP_URL=' "$MCP_ENV" | tail -n 1 | cut -d= -f2- || true)"
+
+            [ -n "$MCP_PUBLIC_URL_VALUE" ] || fail "MCP_PUBLIC_URL is missing in $MCP_ENV"
+            [ -n "$NEXT_APP_URL_VALUE" ] || fail "NEXT_APP_URL is missing in $MCP_ENV"
+
+            log "MCP env public URL: $MCP_PUBLIC_URL_VALUE"
+            log "MCP env OAuth web URL: $NEXT_APP_URL_VALUE"
+
             log "Creating Docker network if missing..."
             sudo docker network create mani-net >/dev/null 2>&1 || true
 
@@ -211,6 +220,8 @@ jobs:
             log "OK: both containers are running"
             log "MCP logs:"
             sudo docker logs --tail 30 mani-mcp | tee -a "$LOG_FILE"
+            log "MCP runtime safe env:"
+            sudo docker exec mani-mcp sh -lc 'printf "MCP_PUBLIC_URL=%s\nNEXT_APP_URL=%s\nCHAIN_ID=%s\n" "$MCP_PUBLIC_URL" "$NEXT_APP_URL" "$CHAIN_ID"' | tee -a "$LOG_FILE"
             log "Web logs:"
             sudo docker logs --tail 30 mani-web | tee -a "$LOG_FILE"
             log "Deployment completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"

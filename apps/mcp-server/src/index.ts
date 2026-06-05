@@ -8,9 +8,15 @@ const __dirname = dirname(__filename)
 const appRoot = resolve(__dirname, '..')
 
 // Load environment variables BEFORE any other imports
-// Use absolute paths since CWD may be monorepo root
-dotenv.config({ path: resolve(appRoot, '.env.local') })
-dotenv.config({ path: resolve(appRoot, '.env') })
+// In production/Docker, runtime config must come from the container env-file.
+// Loading a bundled .env can publish stale OAuth/MCP URLs to external clients.
+if (process.env.NODE_ENV !== 'production') {
+  // Use absolute paths since CWD may be monorepo root
+  dotenv.config({ path: resolve(appRoot, '.env.local') })
+  dotenv.config({ path: resolve(appRoot, '.env') })
+} else {
+  console.log('[MCP Server] Production mode: skipping bundled dotenv files')
+}
 
 async function main() {
   // Dynamic import AFTER env vars are loaded (ESM hoists static imports)
@@ -20,6 +26,7 @@ async function main() {
   console.log('[MCP Server] Environment check:')
   console.log(`  - DATABASE_URL set: ${!!process.env.DATABASE_URL}`)
   console.log(`  - NEXT_APP_URL: ${process.env.NEXT_APP_URL}`)
+  console.log(`  - MCP_PUBLIC_URL: ${process.env.MCP_PUBLIC_URL ?? '(not set)'}`)
   console.log(`  - PORT: ${process.env.PORT}`)
   console.log(`  - CHAIN_ID: ${process.env.CHAIN_ID}`)
 

@@ -43,6 +43,21 @@ export function createApp(config: { nextAppUrl: string; chainId: number; mcpPubl
   // Trust proxy headers (for ngrok, load balancers, etc.)
   app.set('trust proxy', true)
 
+  app.use((req, _res, next) => {
+    logMcpEvent('HTTP request received', {
+      method: req.method,
+      path: req.originalUrl,
+      host: req.get('host') || null,
+      forwardedHost: req.get('x-forwarded-host') || null,
+      forwardedProto: req.get('x-forwarded-proto') || null,
+      cloudfrontViewerAddress: req.get('cloudfront-viewer-address') || null,
+      userAgent: req.get('user-agent') || null,
+      hasAuthorizationHeader: Boolean(req.get('authorization')),
+      hasSessionId: Boolean(req.get('mcp-session-id')),
+    })
+    next()
+  })
+
   // CORS - allow all origins for MCP clients
   app.use(cors({
     origin: true,
